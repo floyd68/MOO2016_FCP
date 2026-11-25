@@ -1,5 +1,8 @@
 # MOO2016_FCP — Late-game performance patch for Master of Orion (2016)
 
+> **Playing Master of Orion, don't be afraid to press a button anymore — almost all of the annoying lags are drastically reduced!**  
+> **Master of Orion을 플레이 하다 더 이상 버튼 누를때 겁먹지 마세요. 거의 모든 짜증나는 랙들을 획기적으로 줄였습니다!**
+
 **FCP** = Fast Code Patch. This project reverse-engineers *Master of Orion: Conquer the Stars* (2016; Unity 5.2 / Mono / Scaleform)
 and fixes the **slowdown that grows with the number of colonies**.
 It is built on top of the game files as patched by **UCP 6.4b (Unofficial Code Patch, by WhatIsSol)**.
@@ -148,6 +151,8 @@ See [LICENSE.md](LICENSE.md).
 ## 한국어 (Korean)
 
 ### MOO2016_FCP — Master of Orion (2016) 후반부 성능 패치
+
+> **Master of Orion을 플레이 하다 더 이상 버튼 누를때 겁먹지 마세요. 거의 모든 짜증나는 랙들을 획기적으로 줄였습니다!**
 
 **FCP** = Fast Code Patch. *Master of Orion: Conquer the Stars*(2016, Unity 5.2 / Mono / Scaleform)에서
 **식민지가 많아질수록 게임이 느려지는 문제**를 리버스 엔지니어링으로 분석하고 고친 패치입니다.
