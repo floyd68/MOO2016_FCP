@@ -1,0 +1,4 @@
+* text=auto
+# Windows batch files need CRLF, bash scripts need LF - regardless of the user's core.autocrlf
+*.cmd text eol=crlf
+*.sh  text eol=lf

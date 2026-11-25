@@ -1,0 +1,49 @@
+--- enterframe.orig.pcode
++++ enterframe.pcode
+@@ -6,4 +6,4 @@
+ body
++maxstack 6
++localcount 5
+-maxstack 1
+-localcount 2
+ initscopedepth 11
+@@ -14,6 +14,39 @@
+ pushscope
++findpropstrict QName(PackageNamespace("flash.utils"),"getTimer")
++callproperty QName(PackageNamespace("flash.utils"),"getTimer"), 0
++convert_i
++setlocal2
+ getlocal0
+ callpropvoid QName(PackageNamespace(""),"CheckTooltips"), 0
++findpropstrict QName(PackageNamespace("flash.utils"),"getTimer")
++callproperty QName(PackageNamespace("flash.utils"),"getTimer"), 0
++convert_i
++setlocal3
+ getlocal0
+ callpropvoid QName(ProtectedNamespace("ngd:ASRoot"),"CheckScrollableObjects"), 0
++findpropstrict QName(PackageNamespace("flash.utils"),"getTimer")
++callproperty QName(PackageNamespace("flash.utils"),"getTimer"), 0
++convert_i
++setlocal 4
++getlocal 4
++getlocal2
++subtract
++pushbyte 3
++iflt ofs9999
++getlex QName(PackageNamespace("flash.external"),"ExternalInterface")
++pushstring "PlaySound"
++pushstring "MOOPERF:"
++getlocal3
++getlocal2
++subtract
++add
++pushstring ":"
++add
++getlocal 4
++getlocal3
++subtract
++add
++pushstring ""
++callpropvoid QName(PackageNamespace(""),"call"), 3
++ofs9999:
+ returnvoid

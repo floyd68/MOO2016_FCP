@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Build against a *publicized* copy of the game's Assembly-CSharp.dll (all members public),
+    produced by:  FixPatcher publicize <original Assembly-CSharp.dll> build/pub/Assembly-CSharp.dll <ManagedDir>
+    Properties (override with -p:Name=Value):
+      GameManaged : the game's MasterOfOrion_Data/Managed folder (UnityEngine.dll, Assembly-CSharp-firstpass.dll)
+      PubDir      : folder containing the publicized Assembly-CSharp.dll
+  -->
+  <PropertyGroup>
+    <TargetFramework>net35</TargetFramework>
+    <AssemblyName>MooFix</AssemblyName>
+    <LangVersion>7.3</LangVersion>
+    <Optimize>true</Optimize>
+    <NoWarn>CS0618;CS0436</NoWarn>
+    <GameManaged Condition="'$(GameManaged)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Master of Orion\MasterOfOrion_Data\Managed</GameManaged>
+    <PubDir Condition="'$(PubDir)' == ''">$(MSBuildThisFileDirectory)..\..\build\pub</PubDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="Assembly-CSharp"><HintPath>$(PubDir)\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Assembly-CSharp-firstpass"><HintPath>$(GameManaged)\Assembly-CSharp-firstpass.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(GameManaged)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,49 @@
+--- buy.orig.pcode
++++ buy_fixed.pcode
+@@ -1,3 +1,3 @@
+ method
++name null
+-name "setBuyBtns"
+ param QName(PackageNamespace(""),"int")
+@@ -6,4 +6,4 @@
+ body
++maxstack 2
++localcount 5
+-maxstack 4
+-localcount 4
+ initscopedepth 10
+@@ -14,6 +14,14 @@
+ pushscope
++getlocal0
++getproperty QName(PrivateNamespace(null,"12"),"mc")
++coerce QName(PackageNamespace(""),"Object")
++setlocal 4
++getlocal 4
++getlocal1
++setproperty Multiname("mfCredits",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
+ pushbyte 0
++convert_i
+ setlocal2
++jump ofs0053
++ofs0033:
+-jump ofs0029
+-ofs0009:
+ label
+@@ -29,3 +37,3 @@
+ getproperty QName(PackageNamespace(""),"visible")
++iffalse ofs0051
+-iffalse ofs0027
+ getlocal3
+@@ -33,5 +41,5 @@
+ callpropvoid QName(PackageNamespace(""),"setBuyBtn"), 1
++ofs0051:
+-ofs0027:
+ inclocal_i 2
++ofs0053:
+-ofs0029:
+ getlocal2
+@@ -40,3 +48,3 @@
+ getproperty QName(PackageNamespace(""),"numChildren")
++iflt ofs0033
+-iflt ofs0009
+ returnvoid

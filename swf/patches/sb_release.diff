@@ -1,0 +1,9 @@
+--- sb_release.orig.pcode
++++ sb_thumbReleaseHandler.fixed.pcode
+@@ -23,4 +23,4 @@
+ setproperty QName(PackageNamespace(""),"mouseStateLocked")
++getlocal0
++getproperty QName(PackageNamespace(""),"stage")
+-getlex QName(PackageNamespace(""),"focusManager")
+-getproperty QName(Namespace("fl.managers:IFocusManager"),"form")
+ coerce QName(PackageNamespace("flash.display"),"DisplayObjectContainer")

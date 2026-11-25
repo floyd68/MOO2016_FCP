@@ -1,0 +1,9 @@
+--- sb_press.orig.pcode
++++ sb_thumbPressHandler.fixed.pcode
+@@ -29,4 +29,4 @@
+ initproperty QName(PackageNamespace(""),"mouseChildren")
++getlocal0
++getproperty QName(PackageNamespace(""),"stage")
+-getlex QName(PackageNamespace(""),"focusManager")
+-getproperty QName(Namespace("fl.managers:IFocusManager"),"form")
+ coerce QName(PackageNamespace("flash.display"),"DisplayObjectContainer")

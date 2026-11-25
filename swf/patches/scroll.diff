@@ -1,0 +1,11 @@
+--- scroll.orig.pcode
++++ scroll_fixed.pcode
+@@ -13,3 +13,8 @@
+ pushscope
++getlex QName(PrivateNamespace(null,"21"),"currentScrollableObject")
+ pushnull
++ifeq ofs8888
++returnvoid
++ofs8888:
++pushnull
+ coerce QName(PackageNamespace(""),"Object")

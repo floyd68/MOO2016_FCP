@@ -1,0 +1,13 @@
+# Never publish game / UCP code or binaries, decompiled sources, third-party tools or logs.
+# _local_only/ is the author's local working material (originals, decompiled sources, logs, full P-code bodies).
+_local_only/
+build/
+bin/
+obj/
+# JPEXS FFDec is downloaded by each user (GPL, not redistributed here)
+tools/ffdec/
+*.swf
+*.dll
+*.exe
+*.orig
+*.jar

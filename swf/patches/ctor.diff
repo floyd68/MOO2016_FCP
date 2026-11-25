@@ -1,0 +1,11 @@
+--- ctor.orig.pcode
++++ ctor_fixed.pcode
+@@ -80,2 +80,8 @@
+ callpropvoid QName(PackageNamespace(""),"addChild"), 1
++getlocal0
++getlex QName(PackageNamespace("flash.events"),"Event")
++getproperty QName(PackageNamespace(""),"ENTER_FRAME")
++getlocal0
++getproperty QName(PackageNamespace(""),"adjustScrollbar")
++callpropvoid QName(PackageNamespace(""),"addEventListener"), 2
+ returnvoid
