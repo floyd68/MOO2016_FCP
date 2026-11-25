@@ -14,17 +14,18 @@ Unofficial — not affiliated with Wargaming, NGD Studios or the UCP author.
 
 | Item | Before | After |
 |---|---|---|
-| Turn simulation (server / client) | 25.3 s / 17.7 s | 8.4 s / 9.2 s |
-| AI stage excluding turn simulation (2 turns) | ~49 s | ~22 s |
+| Turn simulation (server / client) | 25.3 s / 17.7 s | ~3.6 s / ~3.6 s |
+| AI stage excluding turn simulation (2 turns) | ~49 s | ~22 s (first round); turn 227→228 now ~6.5 s for all 8 AI empires |
 | AI path finding (2 turns) | 36.2 s | 8.6 s |
 | Planet screen citizen drag & drop | 0.7–1.4 s per drag | <15 ms per action + one screen refresh |
 | Empire Management frame, mouse over the list | 300–400 ms | ~6 ms on average |
 | Empire Management click handling (Quick Buy, row select) | ~0.5 s per click | 8–10 ms on average |
 | Empire Management list construction (C#) | 1.3–1.7 s | ~0.1 s |
 | Freeze after a battle / an event (turn results) | 17–33 s | ~0 |
-| Loading the save | 17.1–17.3 s | ~10.6–11.1 s |
-| Screen freeze per turn (simulation + new turn) | 10.1–10.3 s | ~7.2 s (both measured with the experimental overlap on) |
+| Loading the save | 17.1–17.3 s | ~9.1–9.2 s |
+| Screen freeze per turn (simulation + new turn) | 10.1–10.3 s | ~4.7–5.3 s (both measured with the experimental overlap on) |
 | Tech tree opening, blueprint "confirm" | 5 s, several s | screen load only (~2 s) |
+| Empire Management after visiting a planet | list reset (sorted by name, top, first colony) | sort, selected colony and scroll position kept |
 
 Experimental: overlapping the server and client turn simulations (`moofix_overlap.txt`, see [docs/02 H](docs/02_FIXES.md)).
 
@@ -160,17 +161,18 @@ See [LICENSE.md](LICENSE.md).
 
 | 항목 | 패치 전 | 패치 후 |
 |---|---|---|
-| 턴 시뮬레이션 (서버 / 클라이언트) | 25.3초 / 17.7초 | 8.4초 / 9.2초 |
-| AI 단계 (턴 시뮬레이션 제외, 2턴) | 약 49초 | 약 22초 |
+| 턴 시뮬레이션 (서버 / 클라이언트) | 25.3초 / 17.7초 | 약 3.6초 / 약 3.6초 |
+| AI 단계 (턴 시뮬레이션 제외, 2턴) | 약 49초 | 약 22초(1차). 현재 227→228턴은 AI 제국 8개 합계 약 6.5초 |
 | AI 경로 탐색 (2턴) | 36.2초 | 8.6초 |
 | 행성 화면 인구 드래그&드롭 | 1회 0.7~1.4초 | 액션 15ms 미만 + 화면 갱신 1회 |
 | 제국 관리 프레임, 마우스가 목록 위 | 300~400ms | 평균 약 6ms |
 | 제국 관리 클릭 처리(Quick Buy, 행 선택) | 클릭당 약 0.5초 | 평균 8~10ms |
 | 제국 관리 목록 생성(C#) | 1.3~1.7초 | 약 0.1초 |
 | 전투·이벤트 후 멈춤(턴 결과 연출) | 17~33초 | 거의 0 |
-| 세이브 로딩 | 17.1~17.3초 | 약 10.6~11.1초 |
-| 턴당 화면 멈춤(시뮬레이션 + 새 턴) | 10.1~10.3초 | 약 7.2초(둘 다 실험 기능인 겹치기를 켠 상태로 측정) |
+| 세이브 로딩 | 17.1~17.3초 | 약 9.1~9.2초 |
+| 턴당 화면 멈춤(시뮬레이션 + 새 턴) | 10.1~10.3초 | 약 4.7~5.3초(둘 다 실험 기능인 겹치기를 켠 상태로 측정) |
 | 기술 트리 열기, 블루프린트 확인 | 5초, 수 초 | 화면 불러오기만(약 2초) |
+| 행성 화면에 다녀온 뒤 제국 관리 화면 | 목록 초기화(이름순, 맨 위, 첫 식민지) | 정렬·선택 식민지·스크롤 위치 유지 |
 
 실험 기능: 서버·클라이언트 턴 시뮬레이션 겹치기(`moofix_overlap.txt`, [docs/02 H](docs/02_FIXES.md)).
 

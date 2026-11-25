@@ -77,6 +77,117 @@ public static class MooFix
         if (tradeCountCache != null) tradeCountCache.Clear();
         if (tradeRawCache != null) tradeRawCache.Clear();
         if (popEtaCache != null) popEtaCache.Clear();
+        if (valCache != null) valCache.Clear();
+    }
+
+    // ---- Per-settlement values that KnownColonyData.Refresh / KnownSettlementData.Refresh copy into every observer's
+    // known data (credit output, upkeep, security rating, orbital defense rating): inside a cache scope (no game state
+    // changes) the same settlement is evaluated once per observing civilization. Memoized per settlement and scope.
+    sealed class SetVals { public byte has; public float credit, creditNoTrade, upkeep, sec, orb; }
+    [ThreadStatic] static Dictionary<Settlement, SetVals> valCache;
+    [ThreadStatic] static long valHits, valMisses;
+
+    static SetVals Vals(Settlement s)
+    {
+        if (valCache == null) valCache = new Dictionary<Settlement, SetVals>();
+        SetVals v;
+        if (!valCache.TryGetValue(s, out v)) { v = new SetVals(); valCache.Add(s, v); }
+        return v;
+    }
+
+    // bit: 1 credit, 2 creditNoTrade, 4 upkeep, 8 security, 16 orbital defense
+    static bool MemoFloat(Settlement s, byte bit, out float result)
+    {
+        result = 0f;
+        SetVals v = Vals(s);
+        if ((v.has & bit) == 0) return false;
+        switch (bit) { case 1: result = v.credit; break; case 2: result = v.creditNoTrade; break; case 4: result = v.upkeep; break; case 8: result = v.sec; break; default: result = v.orb; break; }
+        valHits++;
+        return true;
+    }
+    static void StoreFloat(Settlement s, byte bit, float value)
+    {
+        SetVals v = Vals(s);
+        switch (bit) { case 1: v.credit = value; break; case 2: v.creditNoTrade = value; break; case 4: v.upkeep = value; break; case 8: v.sec = value; break; default: v.orb = value; break; }
+        v.has |= bit;
+        valMisses++;
+    }
+
+    public static bool Pre_Colony_GetCreditOutput(Colony self, bool bIgnoreTradeGoods, out float result)
+    {
+        result = 0f;
+        if (Bypassed() || scopeDepth == 0) return false;
+        try
+        {
+            byte bit = bIgnoreTradeGoods ? (byte)2 : (byte)1;
+            if (MemoFloat(self, bit, out result))
+            {
+                if (Verify && Sample()) { bypass = true; float o = self.GetCreditOutput(bIgnoreTradeGoods); if (o != result) Mismatch("GetCreditOutput", o, result); result = o; }
+                return true;
+            }
+            bypass = true;
+            result = self.GetCreditOutput(bIgnoreTradeGoods);
+            StoreFloat(self, bit, result);
+            return true;
+        }
+        catch (Exception e) { LogEx("GetCreditOutput", e); return false; }
+    }
+
+    public static bool Pre_Colony_GetUpkeepValue(Colony self, out float result)
+    {
+        result = 0f;
+        if (Bypassed() || scopeDepth == 0) return false;
+        try
+        {
+            if (MemoFloat(self, 4, out result))
+            {
+                if (Verify && Sample()) { bypass = true; float o = self.GetUpkeepValue(); if (o != result) Mismatch("GetUpkeepValue", o, result); result = o; }
+                return true;
+            }
+            bypass = true;
+            result = self.GetUpkeepValue();
+            StoreFloat(self, 4, result);
+            return true;
+        }
+        catch (Exception e) { LogEx("GetUpkeepValue", e); return false; }
+    }
+
+    public static bool Pre_Colony_GetSecurityRating(Colony self, out float result)
+    {
+        result = 0f;
+        if (Bypassed() || scopeDepth == 0) return false;
+        try
+        {
+            if (MemoFloat(self, 8, out result))
+            {
+                if (Verify && Sample()) { bypass = true; float o = self.GetSecurityRating(); if (o != result) Mismatch("GetSecurityRating", o, result); result = o; }
+                return true;
+            }
+            bypass = true;
+            result = self.GetSecurityRating();
+            StoreFloat(self, 8, result);
+            return true;
+        }
+        catch (Exception e) { LogEx("GetSecurityRating", e); return false; }
+    }
+
+    public static bool Pre_Settlement_GetOrbitalDefenseRating(Settlement self, out float result)
+    {
+        result = 0f;
+        if (Bypassed() || scopeDepth == 0) return false;
+        try
+        {
+            if (MemoFloat(self, 16, out result))
+            {
+                if (Verify && Sample()) { bypass = true; float o = self.GetOrbitalDefenseRating(); if (o != result) Mismatch("GetOrbitalDefenseRating", o, result); result = o; }
+                return true;
+            }
+            bypass = true;
+            result = self.GetOrbitalDefenseRating();
+            StoreFloat(self, 16, result);
+            return true;
+        }
+        catch (Exception e) { LogEx("GetOrbitalDefenseRating", e); return false; }
     }
 
     // Colony.GetPopulationGrowthETA: refreshed into every observer's KnownColonyData (ReportChange, visibility updates,
@@ -156,15 +267,253 @@ public static class MooFix
     {
         if (Bypassed()) return false;
         if (scopeDepth > 0) ClearCaches();
-        if (pathCache != null) pathCache.Clear();
+        if (pathCache != null) pathCache.Clear(); ClearPathState();
+        ClearRatingCache();
         dispatchDepth++;
         try { bypass = true; self.DispatchAction(action); }
         finally
         {
             dispatchDepth--;
-            if (pathCache != null) pathCache.Clear();
+            if (pathCache != null) pathCache.Clear(); ClearPathState();
+            ClearRatingCache();
             if (scopeDepth > 0) ClearCaches();
         }
+        return true;
+    }
+
+    // ---- AI planet rating: Awareness.GetPlanetRating(planet) is evaluated for every known planet twice per
+    // T_ColonizeWithinVicinity.HandleColonyShips (GetPlanetsToColonize, then Average) and again by the strategy code.
+    // Same validity rules as the path cache (AI stage only, cleared before/after every action, never filled while an
+    // action runs). It also depends on AI-internal state that changes without actions: Awareness.empire (UpdateEmpire),
+    // star occurrences (CalculateStarCentrality), blackboard victory condition / independent allies
+    // (SP_GeneralStrategy.RefreshTargetVictoryCondition / RefreshIndependentCivilizations) -> those clear the cache too.
+    // The colony ship blueprint (AI blueprint updates) is part of the key.
+    struct RatingKey : IEquatable<RatingKey>
+    {
+        public object aw, planet, bp; public bool shared;
+        public bool Equals(RatingKey o) { return ReferenceEquals(aw, o.aw) && ReferenceEquals(planet, o.planet) && ReferenceEquals(bp, o.bp) && shared == o.shared; }
+        public override bool Equals(object o) { return o is RatingKey && Equals((RatingKey)o); }
+        public override int GetHashCode()
+        {
+            unchecked { return (System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(planet) * 397 ^ System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(aw)) * 31 ^ System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(bp) ^ (shared ? 1 : 0); }
+        }
+    }
+    [ThreadStatic] static Dictionary<RatingKey, float> ratingCache;
+    [ThreadStatic] static long ratingHits, ratingMisses, ratingMismatch;
+    static void ClearRatingCache()
+    {
+        if (ratingCache != null && ratingCache.Count > 0) ratingCache.Clear();
+        if (closestCache != null && closestCache.Count > 0) closestCache.Clear();
+        if (pactCache != null && pactCache.Count > 0) pactCache.Clear();
+    }
+
+    // ---- Awareness.GetClosestLocationInEmpireTo(target): loops over every star of the AI's empire with
+    // GetStarSeparationLevels for each planet rating. Depends only on the target's star, the empire set (rebuilt in
+    // UpdateEmpire, which clears this cache) and game state; same validity rules as the planet ratings.
+    struct ClosestKey : IEquatable<ClosestKey>
+    {
+        public object aw, star;
+        public bool Equals(ClosestKey o) { return ReferenceEquals(aw, o.aw) && ReferenceEquals(star, o.star); }
+        public override bool Equals(object o) { return o is ClosestKey && Equals((ClosestKey)o); }
+        public override int GetHashCode() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(aw) * 397 ^ System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(star); }
+    }
+    [ThreadStatic] static Dictionary<ClosestKey, NavigationNode> closestCache;
+
+    public static bool Pre_Awareness_GetClosestLocationInEmpireTo(AI.Awareness self, NavigationNode target, out NavigationNode result)
+    {
+        result = null;
+        if (Bypassed()) return false;
+        if (aiDepth == 0 || dispatchDepth > 0 || target == null) return false;
+        try
+        {
+            Star st = target.GetStar();
+            if (st == null) return false;
+            if (closestCache == null) closestCache = new Dictionary<ClosestKey, NavigationNode>();
+            var k = new ClosestKey { aw = self, star = st };
+            if (closestCache.TryGetValue(k, out result))
+            {
+                if (Verify && Sample()) { bypass = true; NavigationNode o = self.GetClosestLocationInEmpireTo(target); if (!ReferenceEquals(o, result)) Mismatch("GetClosestLocationInEmpireTo", o == null ? "null" : o.Name, result == null ? "null" : result.Name); result = o; }
+                return true;
+            }
+            bypass = true;
+            result = self.GetClosestLocationInEmpireTo(target);
+            closestCache[k] = result;
+            return true;
+        }
+        catch (Exception e) { LogEx("GetClosestLocationInEmpireTo", e); return false; }
+    }
+
+    // ---- MajorCivilization.CheckIfPlanetWouldBeUnderNonSettlementPact: the last test builds, for every planet asked,
+    // the set "undominated neighbours of the stars dominated by this civilization" from all colonies (LINQ, O(colonies)).
+    // That set does not depend on the planet: built once per civilization during the AI stage (same validity rules
+    // as the planet ratings); the other tests run unchanged.
+    [ThreadStatic] static Dictionary<MajorCivilization, HashSet<Star>> pactCache;
+
+    static HashSet<Star> PactNeighbours(MajorCivilization self)
+    {
+        if (pactCache == null) pactCache = new Dictionary<MajorCivilization, HashSet<Star>>();
+        HashSet<Star> set;
+        if (pactCache.TryGetValue(self, out set)) return set;
+        var dominated = new HashSet<Star>();
+        foreach (Colony c in self.colonies)
+        {
+            Star m = c.Placement.GetStar();
+            if (m.GetDominantCivilization() != null && m.GetDominantCivilization().ID == self.ID) dominated.Add(m);
+        }
+        set = new HashSet<Star>();
+        foreach (Star m in dominated)
+            foreach (Star n in m.GetNeighbouringStars())
+                if (n.GetDominantCivilization() == null) set.Add(n);
+        pactCache[self] = set;
+        return set;
+    }
+
+    public static bool Pre_MajorCivilization_CheckIfPlanetWouldBeUnderNonSettlementPact(MajorCivilization self, Planet planet, out bool result)
+    {
+        result = false;
+        if (Bypassed()) return false;
+        if (aiDepth == 0 || dispatchDepth > 0 || planet == null) return false;
+        try
+        {
+            bool r;
+            if (!planet.IsColonizable(self)) r = false;
+            else
+            {
+                r = false;
+                Star star = planet.GetStar();
+                if (self.claimedStars.Contains(star)) r = true;
+                else
+                {
+                    Civilization d = star.GetDominantCivilization();
+                    if (d != null && d.ID == self.ID) r = true;
+                }
+                if (self.HaSettlementInStarWarpgates(planet.GetStar())) r = true;
+                if (star != null && PactNeighbours(self).Contains(star)) r = true;
+            }
+            result = r;
+            if (Verify && Sample()) { bypass = true; bool o = self.CheckIfPlanetWouldBeUnderNonSettlementPact(planet); if (o != result) Mismatch("CheckIfPlanetWouldBeUnderNonSettlementPact", o, result); result = o; }
+            return true;
+        }
+        catch (Exception e) { LogEx("CheckIfPlanetWouldBeUnderNonSettlementPact", e); return false; }
+    }
+
+    public static bool Pre_Awareness_GetPlanetRating(AI.Awareness self, Planet p, bool considerSharedSystem, out float result)
+    {
+        result = 0f;
+        if (Bypassed()) return false;
+        if (aiDepth == 0 || dispatchDepth > 0 || p == null) return false;
+        try
+        {
+            if (ratingCache == null) ratingCache = new Dictionary<RatingKey, float>();
+            var k = new RatingKey { aw = self, planet = p, bp = self.GetColonyShipBlueprint(), shared = considerSharedSystem };
+            if (ratingCache.TryGetValue(k, out result))
+            {
+                ratingHits++;
+                if (Verify && Sample())
+                {
+                    bypass = true; float o = self.GetPlanetRating(p, considerSharedSystem);
+                    if (!(o == result || (float.IsNaN(o) && float.IsNaN(result)))) { ratingMismatch++; Mismatch("GetPlanetRating", o, result); }
+                    result = o;
+                }
+                return true;
+            }
+            bypass = true;
+            result = self.GetPlanetRating(p, considerSharedSystem);
+            ratingCache[k] = result;
+            ratingMisses++;
+            return true;
+        }
+        catch (Exception e) { LogEx("GetPlanetRating", e); return false; }
+    }
+
+    // ---- T_Engage.BoostPriorityOfBlockingSettlements: for every engage target it plots a path and, for every node of
+    // that path, scanned the whole engage target list again (engageTargets.Where(m => m.node == n)) = O(T^2 * L).
+    // Same code with a node -> targets index built once (targets in list order; the loop only changes priority values,
+    // never the list or the nodes; NavigationNode has no == overload, so the original comparison is by reference).
+    public static bool Pre_T_Engage_BoostPriorityOfBlockingSettlements(AI.T_Engage self)
+    {
+        if (Bypassed()) return false;
+        Civilization myCiv = self.myCiv;
+        AI.Blackboard bb = self.bb;
+        NavigationNode colonizedPlanet = myCiv.GetMainColony().ColonizedPlanet;
+        List<EngageTarget> targets = bb.engageTargets;
+        var byNode = new Dictionary<NavigationNode, List<EngageTarget>>();
+        for (int i = 0; i < targets.Count; i++)
+        {
+            EngageTarget t = targets[i];
+            if (t.node == null) continue;            // never equal to a path node
+            List<EngageTarget> l;
+            if (!byNode.TryGetValue(t.node, out l)) { l = new List<EngageTarget>(); byNode.Add(t.node, l); }
+            l.Add(t);
+        }
+        foreach (EngageTarget engageTarget in targets)
+        {
+            if (engageTarget.type != EngageType.ColonyDestroy && engageTarget.type != EngageType.ColonyInvadeOrDestroy && engageTarget.type != EngageType.ColonyInvadeOnly && engageTarget.type != EngageType.Blockade)
+                continue;
+            List<NavigationNode> list = myCiv.universe.PlotPath(colonizedPlanet, engageTarget.node, myCiv, true, true, false);
+            foreach (NavigationNode n in list)
+            {
+                List<EngageTarget> atNode;
+                if (n == null || !byNode.TryGetValue(n, out atNode)) continue;
+                foreach (EngageTarget item2 in atNode)
+                {
+                    Settlement settlementFrom = n.GetSettlementFrom(item2.civ);
+                    if (settlementFrom != null && settlementFrom.HaveBlockingStructure() && settlementFrom.Placement.Blocker != null && settlementFrom.Placement.Blocker != myCiv)
+                    {
+                        if (item2.priority < engageTarget.priority) item2.priority = engageTarget.priority;
+                        item2.priorityBias++;
+                    }
+                }
+            }
+        }
+        bb.engageTargets = self.GetSortedEngageTargets(bb.engageTargets);
+        return true;
+    }
+
+    // ---- AI travel regions (NavigationNode.CacheCanTravelRegions, at the start of every AI pass): timing only. The
+    // profiling build showed 2.2 s, but these are recursive methods and the profiler wraps every recursive call.
+    [ThreadStatic] static long regionTicks;
+    [ThreadStatic] static int regionCalls;
+
+    public static bool Pre_NavigationNode_CacheCanTravelRegions(Civilization civ)
+    {
+        if (Bypassed()) return false;
+        long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { bypass = true; NavigationNode.CacheCanTravelRegions(civ); }
+        finally { regionTicks += System.Diagnostics.Stopwatch.GetTimestamp() - t0; regionCalls++; }
+        return true;
+    }
+
+    // AI-internal state changes: drop the ratings before and after
+    public static bool Pre_Awareness_UpdateEmpire(AI.Awareness self)
+    {
+        if (Bypassed()) return false;
+        ClearRatingCache();
+        try { bypass = true; self.UpdateEmpire(); } finally { ClearRatingCache(); }
+        return true;
+    }
+
+    public static bool Pre_Awareness_CalculateStarCentrality(AI.Awareness self)
+    {
+        if (Bypassed()) return false;
+        ClearRatingCache();
+        try { bypass = true; self.CalculateStarCentrality(); } finally { ClearRatingCache(); }
+        return true;
+    }
+
+    public static bool Pre_SP_GeneralStrategy_RefreshIndependentCivilizations(AI.SP_GeneralStrategy self)
+    {
+        if (Bypassed()) return false;
+        ClearRatingCache();
+        try { bypass = true; self.RefreshIndependentCivilizations(); } finally { ClearRatingCache(); }
+        return true;
+    }
+
+    public static bool Pre_SP_GeneralStrategy_RefreshTargetVictoryCondition(AI.SP_GeneralStrategy self)
+    {
+        if (Bypassed()) return false;
+        ClearRatingCache();
+        try { bypass = true; self.RefreshTargetVictoryCondition(); } finally { ClearRatingCache(); }
         return true;
     }
 
@@ -200,12 +549,13 @@ public static class MooFix
             if (--aiDepth <= 0)
             {
                 aiDepth = 0;
-                if (pathCache != null) pathCache.Clear();
+                if (pathCache != null) pathCache.Clear(); ClearPathState();
+                ClearRatingCache();
                 double f = 1000.0 / System.Diagnostics.Stopwatch.Frequency;
                 double aiMs = (System.Diagnostics.Stopwatch.GetTimestamp() - aiStartTicks) * f;
                 if (aiMs > 50 || pathHits + pathMisses > 0)
-                    Log("AI RunAI " + aiMs.ToString("F0") + "ms | verified fast paths=" + fastCount + " mismatches=" + fastMismatch + " | PlotPath hits=" + pathHits + " computed=" + pathMisses + " (" + (pathMissTicks * f).ToString("F0") + "ms) of which unreachable=" + pathFailCount + " (" + (pathFailTicks * f).ToString("F0") + "ms)");
-                pathHits = 0; pathMisses = 0; pathMissTicks = 0; pathFailCount = 0; pathFailTicks = 0;
+                    Log("AI RunAI " + aiMs.ToString("F0") + "ms | verified fast paths=" + fastCount + " mismatches=" + fastMismatch + " | PlotPath hits=" + pathHits + " computed=" + pathMisses + " (" + (pathMissTicks * f).ToString("F0") + "ms) of which unreachable=" + pathFailCount + " (" + (pathFailTicks * f).ToString("F0") + "ms) | planet ratings hits=" + ratingHits + " computed=" + ratingMisses + (Verify ? " mismatches=" + ratingMismatch : "") + " | travel regions " + regionCalls + "x " + (regionTicks * f).ToString("F0") + "ms");
+                pathHits = 0; pathMisses = 0; pathMissTicks = 0; pathFailCount = 0; pathFailTicks = 0; ratingHits = 0; ratingMisses = 0; regionTicks = 0; regionCalls = 0;
             }
         }
         return true;
@@ -219,6 +569,7 @@ public static class MooFix
     [ThreadStatic] static Dictionary<NavigationNode, NodeInfo> fInfo;
     [ThreadStatic] static List<NavigationNode> fNeigh, fCells;
     [ThreadStatic] static Dictionary<NavigationNode, int> fIdx;
+    static void ClearPathState() { if (fInfo != null) { fInfo.Clear(); fCells.Clear(); fIdx.Clear(); } }
 
     // ------------------------------------------------------------------ shared faithful A* core
     // Mirror of AStar.PathFinder.FindPath used by FastPlotPath (GalaxyMap) and StarSeparation (StarGraph): the same game
@@ -233,21 +584,27 @@ public static class MooFix
         void Neighbors(int index, AStar.ICell parent, List<int> outIdx); // graph.GetNeighbors(cell, parent), same order
     }
 
+    // Search state per cell number. The game's PriorityList<AStar.Node> is a binary heap of Node references compared
+    // with Node.CompareTo (f only) through Comparer<Node>.Default; a node can be in the heap several times and its f
+    // is changed while it is in the heap. This heap stores cell numbers, compares the cells' current f values with the
+    // same comparison and performs exactly the same push / pop / swap sequence, so the pop order is identical -
+    // without object comparers, interface calls and Node objects.
     sealed class AStarState
     {
-        public readonly PriorityList<AStar.Node> heap = new PriorityList<AStar.Node>();
+        public int[] heap = new int[64];
+        public int heapCount;
         public readonly List<int> neigh = new List<int>();
-        public AStar.Node[] nodes = new AStar.Node[0];
+        public float[] f = new float[0], g = new float[0];
+        public int[] par = new int[0];                                   // parent cell, -1 = none, -2 = start parent
         public int[] nodeMark = new int[0], openMark = new int[0], closedMark = new int[0];
         public int mark;
 
         public void Ensure(int n)
         {
-            if (n <= nodes.Length) return;
-            int size = Math.Max(n, Math.Max(64, nodes.Length * 2));
-            int old = nodes.Length;
-            Array.Resize(ref nodes, size); Array.Resize(ref nodeMark, size); Array.Resize(ref openMark, size); Array.Resize(ref closedMark, size);
-            for (int i = old; i < size; i++) nodes[i] = new AStar.Node();
+            if (n <= f.Length) return;
+            int size = Math.Max(n, Math.Max(64, f.Length * 2));
+            Array.Resize(ref f, size); Array.Resize(ref g, size); Array.Resize(ref par, size);
+            Array.Resize(ref nodeMark, size); Array.Resize(ref openMark, size); Array.Resize(ref closedMark, size);
         }
 
         public void Begin()
@@ -257,16 +614,53 @@ public static class MooFix
                 Array.Clear(nodeMark, 0, nodeMark.Length); Array.Clear(openMark, 0, openMark.Length); Array.Clear(closedMark, 0, closedMark.Length);
                 mark = 1;
             }
-            heap.Clear();
+            heapCount = 0;
         }
 
         // PathFinder.GetNode: the node of a cell, initialized on first use in this search
-        public AStar.Node Node(int i, AStar.ICell cell)
+        public void Node(int i)
         {
             Ensure(i + 1);
-            AStar.Node n = nodes[i];
-            if (nodeMark[i] != mark) { n.Initialize(cell, null, 0f, 0f); nodeMark[i] = mark; }
-            return n;
+            if (nodeMark[i] != mark) { f[i] = 0f; g[i] = 0f; par[i] = -1; nodeMark[i] = mark; }
+        }
+
+        // Node.CompareTo: 1 if f > other, -1 if f < other, else 0
+        int Cmp(int i, int j)
+        {
+            float a = f[heap[i]], b = f[heap[j]];
+            if (a > b) return 1;
+            if (a < b) return -1;
+            return 0;
+        }
+
+        public void Push(int cell)                                       // PriorityList.Push
+        {
+            if (heapCount == heap.Length) Array.Resize(ref heap, heap.Length * 2);
+            int num = heapCount;
+            heap[heapCount++] = cell;
+            while (num != 0)
+            {
+                int num2 = (num - 1) / 2;
+                if (Cmp(num, num2) < 0) { int t = heap[num]; heap[num] = heap[num2]; heap[num2] = t; num = num2; continue; }
+                break;
+            }
+        }
+
+        public int Pop()                                                 // PriorityList.Pop
+        {
+            int result = heap[0];
+            int num = 0;
+            heap[0] = heap[heapCount - 1];
+            heapCount--;
+            while (true)
+            {
+                int num2 = num, num3 = 2 * num + 1, num4 = 2 * num + 2;
+                if (heapCount > num3 && Cmp(num, num3) > 0) num = num3;
+                if (heapCount > num4 && Cmp(num, num4) > 0) num = num4;
+                if (num == num2) break;
+                int t = heap[num]; heap[num] = heap[num2]; heap[num2] = t;
+            }
+            return result;
         }
     }
     [ThreadStatic] static AStarState astar;
@@ -276,21 +670,19 @@ public static class MooFix
     static bool FaithfulAStar<G>(ref G g, AStarState s, int start, int end, AStar.ICell startParent, out int last) where G : struct, IFaithfulGraph
     {
         s.Begin();
-        PriorityList<AStar.Node> heap = s.heap;
-        AStar.Node node = s.Node(start, g.Cell(start));
-        node.Initialize(g.Cell(start), null, g.Heuristic(start), 0f);
-        node.parent = startParent;                                       // FindPath(..., last)
-        heap.Push(node);
+        s.Node(start);
+        s.f[start] = g.Heuristic(start); s.g[start] = 0f;
+        s.par[start] = -2;                                               // FindPath(..., last)
+        s.Push(start);
         int best = -1;
         float bestH = float.MaxValue;
-        while (heap.Count != 0)
+        List<int> nb = s.neigh;
+        while (s.heapCount != 0)
         {
-            AStar.Node node2 = null;
             int c2 = -1;
-            while (heap.Count > 0)
+            while (s.heapCount > 0)
             {
-                node2 = heap.Pop();
-                c2 = g.IndexOf(node2.cell);
+                c2 = s.Pop();
                 s.openMark[c2] = 0;
                 if (s.closedMark[c2] != s.mark) break;
             }
@@ -298,24 +690,23 @@ public static class MooFix
             float h = g.Heuristic(c2);
             if (h < bestH) { bestH = h; best = c2; }
             if (c2 == end) { last = c2; return true; }
-            List<int> nb = s.neigh;
             nb.Clear();
-            g.Neighbors(c2, node2.parent, nb);
-            AStar.ICell cell2 = node2.cell;
+            int pc = s.par[c2];
+            g.Neighbors(c2, pc == -2 ? startParent : pc < 0 ? null : g.Cell(pc), nb);
+            float cost = s.g[c2] + 1f;
             for (int t = 0; t < nb.Count; t++)
             {
                 int k = nb[t];
                 s.Ensure(k + 1);
                 if (s.closedMark[k] == s.mark) continue;
-                AStar.Node node4 = s.Node(k, g.Cell(k));
-                float cost = node2.g + 1f;
-                if (s.openMark[k] != s.mark || cost < node4.g)
+                s.Node(k);
+                if (s.openMark[k] != s.mark || cost < s.g[k])
                 {
-                    node4.parent = cell2;
-                    node4.g = cost;
-                    node4.f = cost + g.Heuristic(k);
+                    s.par[k] = c2;
+                    s.g[k] = cost;
+                    s.f[k] = cost + g.Heuristic(k);
                     s.openMark[k] = s.mark;
-                    heap.Push(node4);
+                    s.Push(k);
                 }
             }
         }
@@ -327,14 +718,14 @@ public static class MooFix
     static int FaithfulPathLength<G>(ref G g, AStarState s, int last, int start) where G : struct, IFaithfulGraph
     {
         int len = 1;
-        for (int c = last; c != start; c = g.IndexOf(s.nodes[c].parent)) len++;
+        for (int c = last; c != start; c = s.par[c]) len++;
         return len;
     }
 
     static List<NavigationNode> FaithfulPath<G>(ref G g, AStarState s, int last, int start) where G : struct, IFaithfulGraph
     {
         var path = new List<NavigationNode>();
-        for (int c = last; ; c = g.IndexOf(s.nodes[c].parent))
+        for (int c = last; ; c = s.par[c])
         {
             path.Add((NavigationNode)g.Cell(c));
             if (c == start) break;
@@ -432,7 +823,8 @@ public static class MooFix
             fInfo = new Dictionary<NavigationNode, NodeInfo>(); fNeigh = new List<NavigationNode>();
             fCells = new List<NavigationNode>(); fIdx = new Dictionary<NavigationNode, int>();
         }
-        fInfo.Clear(); fCells.Clear(); fIdx.Clear();
+        // node info (jump gate, star) and cell numbering are kept for the whole AI stage: they only change through
+        // actions or turn simulation, and are dropped together with the path cache (ClearPathState)
         Civilization owner = gm.traveler;
         var g = new GalaxyGraph
         {
@@ -549,10 +941,152 @@ public static class MooFix
         catch (Exception e) { LogEx("HasBuildableInQueue", e); return false; }
     }
 
+    // ---- Empire security across cache scopes during colony processing (turn simulation).
+    // Every colony's OnTurn ends with Placement.ReportChange(), a cache scope of its own, so GetEmpireSecurity (an O(colonies)
+    // walk over all structures) was recomputed ~1,000 times per turn on each side. Inside
+    // Civilization.ProcessSettlementsOnTurn (the colony/development OnTurn loop) the value is cached per civilization
+    // together with a generation number. The generation is increased before and after every change of its inputs that
+    // can happen there: structures added/demolished (Settlement.AddStructure, Settlement.DemolishStructure overloads,
+    // bombardment), colonies gained/lost (Civilization.OnColonyOwned/OnColonyLost incl. overrides), owner changes
+    // (Settlement/Colony.ChangeOwner). Leaders, technologies, espionage missions and difficulty change outside this loop.
+    // Verification mode compares samples with a fresh computation.
+    [ThreadStatic] static int settleDepth;
+    [ThreadStatic] static long secGen;
+    [ThreadStatic] static Dictionary<MajorCivilization, SecEntry> secGenCache;
+    [ThreadStatic] static long secGenHits, secGenMisses;
+    class SecEntry { public long gen; public float value; }
+
+    public static bool Pre_Civilization_ProcessSettlementsOnTurn(Civilization self)
+    {
+        if (Bypassed()) return false;
+        settleDepth++; secGen++;
+        try { bypass = true; self.ProcessSettlementsOnTurn(); }
+        finally
+        {
+            secGen++;
+            if (--settleDepth == 0 && secGenCache != null) secGenCache.Clear();
+        }
+        return true;
+    }
+
+    [ThreadStatic] static int inAddStructure, inDemolish, inChangeOwner, inColOwned, inColLost, inBombard;
+
+    public static bool Pre_Settlement_AddStructure(Settlement self, ColonyStructureType structure)
+    {
+        if (Bypassed()) return false;
+        if (settleDepth == 0) return false;
+        if (inAddStructure > 0) { secGen++; return false; }
+        inAddStructure++; secGen++;
+        try { bypass = true; self.AddStructure(structure); } finally { inAddStructure--; secGen++; }
+        return true;
+    }
+
+    public static bool Pre_Settlement_DemolishStructure(Settlement self, string structureKey, Settlement.LostReason reason, Backend.RandomEvents.RandomEventBase randomEvent)
+    {
+        if (Bypassed()) return false;
+        if (settleDepth == 0) return false;
+        if (inDemolish > 0) { secGen++; return false; }
+        inDemolish++; secGen++;
+        try { bypass = true; self.DemolishStructure(structureKey, reason, randomEvent); } finally { inDemolish--; secGen++; }
+        return true;
+    }
+
+    public static bool Pre_Settlement_DemolishStructure2(Settlement self, string structureKey, Settlement.LostReason reason, Civilization remover, List<Fleet> attackers)
+    {
+        if (Bypassed()) return false;
+        if (settleDepth == 0) return false;
+        if (inDemolish > 0) { secGen++; return false; }
+        inDemolish++; secGen++;
+        try { bypass = true; self.DemolishStructure(structureKey, reason, remover, attackers); } finally { inDemolish--; secGen++; }
+        return true;
+    }
+
+    // protected virtual DemolishStructure(5 args) and its overrides: bump only (cannot be re-called from here)
+    public static bool Pre_Settlement_DemolishStructureCore(Settlement self, string structureKey, Settlement.LostReason reason, Civilization remover, List<Fleet> attackers, Backend.RandomEvents.RandomEventBase randomEvent)
+    { if (settleDepth > 0) secGen++; return false; }
+    public static bool Pre_Colony_DemolishStructureCore(Colony self, string structureKey, Settlement.LostReason reason, Civilization remover, List<Fleet> attackers, Backend.RandomEvents.RandomEventBase randomEvent)
+    { if (settleDepth > 0) secGen++; return false; }
+    public static bool Pre_NodeDevelopment_DemolishStructureCore(NodeDevelopment self, string structureKey, Settlement.LostReason reason, Civilization remover, List<Fleet> attackers, Backend.RandomEvents.RandomEventBase randomEvent)
+    { if (settleDepth > 0) secGen++; return false; }
+
+    // virtual ChangeOwner: the outermost hook wraps the virtual call; inner hooks (base called from the override) only bump
+    static bool WrapChangeOwner(Settlement self, Civilization newOwner, Settlement.LostReason reason, List<Fleet> invasorFleets)
+    {
+        if (Bypassed()) return false;
+        if (settleDepth == 0) return false;
+        if (inChangeOwner > 0) { secGen++; return false; }
+        inChangeOwner++; secGen++;
+        try { bypass = true; self.ChangeOwner(newOwner, reason, invasorFleets); } finally { inChangeOwner--; secGen++; }
+        return true;
+    }
+    public static bool Pre_Settlement_ChangeOwner(Settlement self, Civilization newOwner, Settlement.LostReason reason, List<Fleet> invasorFleets)
+    { return WrapChangeOwner(self, newOwner, reason, invasorFleets); }
+    public static bool Pre_Colony_ChangeOwner(Colony self, Civilization newOwner, Settlement.LostReason reason, List<Fleet> invasorFleets)
+    { return WrapChangeOwner(self, newOwner, reason, invasorFleets); }
+
+    static bool WrapColonyOwned(Civilization self, Colony col)
+    {
+        if (Bypassed()) return false;
+        if (settleDepth == 0) return false;
+        if (inColOwned > 0) { secGen++; return false; }
+        inColOwned++; secGen++;
+        try { bypass = true; self.OnColonyOwned(col); } finally { inColOwned--; secGen++; }
+        return true;
+    }
+    public static bool Pre_Civilization_OnColonyOwned(Civilization self, Colony col) { return WrapColonyOwned(self, col); }
+    public static bool Pre_MajorCivilization_OnColonyOwned(MajorCivilization self, Colony col) { return WrapColonyOwned(self, col); }
+
+    static bool WrapColonyLost(Civilization self, Colony col, Settlement.LostReason reason, List<Fleet> attackerFleets)
+    {
+        if (Bypassed()) return false;
+        if (settleDepth == 0) return false;
+        if (inColLost > 0) { secGen++; return false; }
+        inColLost++; secGen++;
+        try { bypass = true; self.OnColonyLost(col, reason, attackerFleets); } finally { inColLost--; secGen++; }
+        return true;
+    }
+    public static bool Pre_Civilization_OnColonyLost(Civilization self, Colony col, Settlement.LostReason reason, List<Fleet> attackerFleets) { return WrapColonyLost(self, col, reason, attackerFleets); }
+    public static bool Pre_MajorCivilization_OnColonyLost(MajorCivilization self, Colony col, Settlement.LostReason reason, List<Fleet> attackerFleets) { return WrapColonyLost(self, col, reason, attackerFleets); }
+    public static bool Pre_PirateCivilization_OnColonyLost(PirateCivilization self, Colony col, Settlement.LostReason reason, List<Fleet> attackerFleets) { return WrapColonyLost(self, col, reason, attackerFleets); }
+
+    public static bool Pre_ColonyAttackResult_Bombard(ColonyAttackResult self, List<ColonyAttackType> sequence, out bool result)
+    {
+        result = false;
+        if (Bypassed()) return false;
+        if (settleDepth == 0) return false;
+        if (inBombard > 0) { secGen++; return false; }
+        inBombard++; secGen++;
+        try { bypass = true; result = self.Bombard(sequence); } finally { inBombard--; secGen++; }
+        return true;
+    }
+
     public static bool Pre_MajorCivilization_GetEmpireSecurity(MajorCivilization self, out float result)
     {
         result = 0f;
-        if (Bypassed() || scopeDepth == 0) return false;
+        if (Bypassed()) return false;
+        if (settleDepth > 0)
+        {
+            try
+            {
+                if (secGenCache == null) secGenCache = new Dictionary<MajorCivilization, SecEntry>();
+                SecEntry e;
+                if (secGenCache.TryGetValue(self, out e) && e.gen == secGen)
+                {
+                    secGenHits++;
+                    result = e.value;
+                    if (Verify && Sample()) { bypass = true; float o = self.GetEmpireSecurity(); if (o != result) { Mismatch("GetEmpireSecurity (colony processing)", o, result); e.value = o; } result = o; }
+                    return true;
+                }
+                bypass = true;
+                result = self.GetEmpireSecurity();
+                if (e == null) { e = new SecEntry(); secGenCache[self] = e; }
+                e.gen = secGen; e.value = result;
+                secGenMisses++;
+                return true;
+            }
+            catch (Exception ex) { LogEx("GetEmpireSecurity (colony processing)", ex); return false; }
+        }
+        if (scopeDepth == 0) return false;
         try
         {
             if (secCache == null) secCache = new Dictionary<MajorCivilization, float>();
@@ -630,7 +1164,17 @@ public static class MooFix
     public static bool Pre_Civilization_GetRawTradeableResourceProduction(Civilization self, PlanetaryResourceType resource, out int result)
     {
         result = 0;
-        if (Bypassed() || scopeDepth == 0 || resource == null) return false;
+        if (Bypassed() || resource == null) return false;
+        if (scopeDepth == 0)
+        {
+            try
+            {
+                result = FastRawTrade(self, resource);
+                if (Verify && Sample()) { bypass = true; int o = self.GetRawTradeableResourceProduction(resource); if (o != result) Mismatch("FastRawTrade", o, result); result = o; }
+                return true;
+            }
+            catch (Exception e) { LogEx("GetRawTradeableResourceProduction", e); return false; }
+        }
         try
         {
             if (tradeRawCache == null) tradeRawCache = new Dictionary<TradeKey, int>();
@@ -640,12 +1184,188 @@ public static class MooFix
                 if (Verify && Sample()) { bypass = true; int o = self.GetRawTradeableResourceProduction(resource); if (o != result) Mismatch("GetRawTradeableResourceProduction", o, result); result = o; }
                 return true;
             }
-            bypass = true;
-            result = self.GetRawTradeableResourceProduction(resource);
+            result = FastRawTrade(self, resource);
+            if (Verify && Sample()) { bypass = true; int o = self.GetRawTradeableResourceProduction(resource); if (o != result) Mismatch("FastRawTrade", o, result); result = o; }
             tradeRawCache[k] = result;
             return true;
         }
         catch (Exception e) { LogEx("GetRawTradeableResourceProduction", e); return false; }
+    }
+
+    // Same sum as Civilization.GetRawTradeableResourceProduction without building Planet.TradeableResources (a new
+    // filtered Dictionary on every access, twice per colony: ~165 KB per call, ~200 MB per turn simulation).
+    // TradeableResources = planetaryResources where key.isTradeable, so ContainsKey/indexer == TryGetValue + isTradeable.
+    static int FastRawTrade(Civilization self, PlanetaryResourceType resource)
+    {
+        int num = 0, v;
+        bool tradeable = resource.isTradeable;
+        List<Colony> cols = self.Colonies;
+        for (int i = 0; i < cols.Count; i++)
+        {
+            Colony colony = cols[i];
+            Planet pl = colony.ColonizedPlanet;
+            if (pl.planetaryResources.TryGetValue(resource, out v) && tradeable && !colony.IsBlockaded) num += v;
+        }
+        List<NodeDevelopment> devs = self.developments;
+        for (int i = 0; i < devs.Count; i++)
+        {
+            NodeDevelopment d = devs[i];
+            Planet pl = d.Placement as Planet;
+            if (pl == null || !pl.planetaryResources.TryGetValue(resource, out v) || !tradeable || d.IsBlockaded) continue;
+            bool extract = false;
+            foreach (ColonyStructureType t in d.structures) if (t.canExtractResources) { extract = true; break; }
+            if (extract) num += v;
+        }
+        return num;
+    }
+
+    // ---- Allocation-free versions of methods that allocate on every call (LINQ, iterators, closures, temporary
+    // collections) and are called thousands of times per turn. Same results (same iteration order where it matters);
+    // verification mode compares samples with the original.
+    // Star.HasAllConnectionsDiscoveredBy: original enumerates GetInterstellarConnections() (iterators + a HashSet per
+    // node, ~10 KB per call, 12,000 calls per turn simulation). Only "all discovered?" is asked, so the order of the
+    // checks and the de-duplication do not matter.
+    public static bool Pre_Star_HasAllConnectionsDiscoveredBy(Star self, Civilization civ, out bool result)
+    {
+        result = false;
+        if (Bypassed()) return false;
+        try
+        {
+            result = AllDiscovered(self, civ);
+            if (Verify && Sample()) { bypass = true; bool o = self.HasAllConnectionsDiscoveredBy(civ); if (o != result) Mismatch("HasAllConnectionsDiscoveredBy", o, result); result = o; }
+            return true;
+        }
+        catch (Exception e) { LogEx("HasAllConnectionsDiscoveredBy", e); return false; }
+    }
+
+    static bool AllDiscovered(Star self, Civilization civ)
+    {
+        List<NavigationNode> kids = self.children;
+        for (int i = 0; i < kids.Count; i++)
+        {
+            NavigationNode child = kids[i];
+            if (child is Warpgate && !child.WasDiscovered(civ)) return false;
+        }
+        return InterstellarDiscovered(self, civ);
+    }
+
+    // every star yielded by n.GetInterstellarConnections() was discovered by civ
+    static bool InterstellarDiscovered(NavigationNode n, Civilization civ)
+    {
+        List<NavigationNode> conns = n.connections;
+        if (n is Star)
+        {   // Star override: connected stars, then the interstellar connections of every child
+            for (int i = 0; i < conns.Count; i++)
+            {
+                Star st = conns[i] as Star;
+                if (st != null && !st.WasDiscovered(civ)) return false;
+            }
+            List<NavigationNode> kids = n.children;
+            for (int i = 0; i < kids.Count; i++) if (!InterstellarDiscovered(kids[i], civ)) return false;
+            return true;
+        }
+        Star source = n.GetStar();
+        if (source == null) return true;
+        for (int i = 0; i < conns.Count; i++)
+        {
+            Star target = conns[i].GetStar();
+            if (target != null && source.ID != target.ID && !target.WasDiscovered(civ)) return false;
+        }
+        return true;
+    }
+
+    // ColonyStructureType.IsCompatible: the original allocates a closure on every call (and LINQ for colonies in
+    // system / planetary resources). 130,000 calls per turn simulation via Colony.IBuildableRequirementsMet.
+    public static bool Pre_ColonyStructureType_IsCompatible(ColonyStructureType self, NavigationNode p, Civilization civ, out bool result)
+    {
+        result = false;
+        if (Bypassed()) return false;
+        try
+        {
+            result = FastIsCompatible(self, p, civ);
+            if (Verify && Sample()) { bypass = true; bool o = self.IsCompatible(p, civ); if (o != result) Mismatch("IsCompatible " + self.key, o, result); result = o; }
+            return true;
+        }
+        catch (Exception e) { LogEx("IsCompatible", e); return false; }
+    }
+
+    static bool FastIsCompatible(ColonyStructureType self, NavigationNode p, Civilization civ)
+    {
+        if (self.requiresColonyInSystem)
+        {   // p.GetStar().GetColonies(civ).Count() == 0 (all planets are visited, like Count())
+            List<Planet> planets = p.GetStar().GetPlanets();
+            int count = 0;
+            for (int i = 0; i < planets.Count; i++)
+            {
+                Colony c = planets[i].Colony;
+                if (c != null && c.Owner != null && c.Owner.ID == civ.ID) count++;
+            }
+            if (count == 0) return false;
+        }
+        if (self.requiresWarpGate && !(p is Warpgate)) return false;
+        if (!self.requiresWarpGate && p is Warpgate) return false;
+        Planet pl = p as Planet;
+        if (pl != null)
+        {
+            if (!(self.compatibleBiomes.Length == 0 || System.Linq.Enumerable.Contains(self.compatibleBiomes, pl.biome))) return false;
+            if (!(self.compatibleRichness.Length == 0 || System.Linq.Enumerable.Contains(self.compatibleRichness, pl.MineralRichness))) return false;
+            if (!(self.compatiblePlanetSize.Length == 0 || System.Linq.Enumerable.Contains(self.compatiblePlanetSize, pl.Size))) return false;
+            if (self.compatiblePlanetaryResource.Length == 0) return true;
+            PlanetaryResourceType[] req = self.compatiblePlanetaryResource;
+            for (int i = 0; i < req.Length; i++)
+            {
+                PlanetaryResourceType r = req[i];
+                foreach (PlanetaryResourceType pr in pl.planetaryResources.Keys) if (pr == r) return true;
+            }
+            return false;
+        }
+        return p is Warpgate;
+    }
+
+    // MajorCivilization.GetEmpireStructureSecurityBonus: same additions in the same order, without the temporary list
+    public static bool Pre_MajorCivilization_GetEmpireStructureSecurityBonus(MajorCivilization self, out float result)
+    {
+        result = 0f;
+        if (Bypassed()) return false;
+        try
+        {
+            float num = 0f;
+            List<Colony> cols = self.colonies;
+            for (int i = 0; i < cols.Count; i++)
+                foreach (ColonyStructureType m in cols[i].structures) if (m.empireSecurityBonus != 0f) num += m.empireSecurityBonus;
+            result = num;
+            if (Verify && Sample()) { bypass = true; float o = self.GetEmpireStructureSecurityBonus(); if (o != result) Mismatch("GetEmpireStructureSecurityBonus", o, result); result = o; }
+            return true;
+        }
+        catch (Exception e) { LogEx("GetEmpireStructureSecurityBonus", e); return false; }
+    }
+
+    // Civilization.GetStarSystemLeaderBonusValue: star.GetColonies(this) without LINQ (same planets, same order)
+    public static bool Pre_Civilization_GetStarSystemLeaderBonusValue(Civilization self, Star star, string bonusKey, float defaultValue, out float result)
+    {
+        result = 0f;
+        if (Bypassed()) return false;
+        try
+        {
+            float num = defaultValue;
+            List<Planet> planets = star.GetPlanets();
+            for (int i = 0; i < planets.Count; i++)
+            {
+                Colony colony = planets[i].Colony;
+                if (colony == null || colony.Owner == null || colony.Owner.ID != self.ID) continue;
+                if (colony.IsInRevolt || colony.IsBlockaded) continue;
+                var assignedLeader = colony.GetAssignedLeader();
+                if (assignedLeader != null)
+                {
+                    float v = assignedLeader.GetApplicableBonusValue(bonusKey, defaultValue);
+                    if (v > num) num = v;
+                }
+            }
+            result = num;
+            if (Verify && Sample()) { bypass = true; float o = self.GetStarSystemLeaderBonusValue(star, bonusKey, defaultValue); if (o != result) Mismatch("GetStarSystemLeaderBonusValue", o, result); result = o; }
+            return true;
+        }
+        catch (Exception e) { LogEx("GetStarSystemLeaderBonusValue", e); return false; }
     }
 
     // Citizen drag & drop (ActionUpdateProductionWorkers) makes the colony send MessageRefreshPlanet(All) (RefreshGrid,
@@ -757,6 +1477,175 @@ public static class MooFix
         try { bypass = true; self.LoadColoniesData(); }
         finally { Exit(); }
         return true;
+    }
+
+    // ---- Empire Management list state across a visit to a planet screen (convenience, not a performance fix).
+    // Opening a planet from the list closes the Empire Management screen (UIStatePlanet clears the UI stack), so the
+    // list comes back sorted by colony, scrolled to the top, first colony selected. When a colony is clicked, the sort
+    // (published by the patched FillList as widgetContainer.name = "mfsort|<filter>|<direction>"), the selected colony
+    // and the scroll position are read from the movie; when the screen is opened again, after its colony list has been
+    // filled, they are re-applied through the screen's own paths: header button clicks (same as the player clicking
+    // the header), OnColonySelected of the colony's row, then the scroll position.
+    sealed class EmState { public Colony colony; public double scroll; public string filter, dir; }
+    static EmState emSaved;
+    static SWFEmpireManagement emSavedFrom, emTarget;
+    static int emFrames;
+
+    static Scaleform.Value Mem(Scaleform.Value v, string name)
+    {
+        if (v == null) return null;
+        Scaleform.Value r = v.GetMember(name);
+        if (r == null || r.IsUndefined() || r.IsNull()) return null;
+        return r;
+    }
+
+    // numeric AS3 values arrive as VT_Int, VT_UInt or VT_Number; each must be read with its own getter
+    static bool Num(Scaleform.Value v, out double d)
+    {
+        d = 0;
+        if (v == null) return false;
+        if (v.IsInt()) { d = (int)v; return true; }
+        if (v.IsUInt()) { d = (uint)v; return true; }
+        if (v.IsNumber()) { d = (double)v; return true; }
+        return false;
+    }
+
+    static Scaleform.Value EmColonyWindow(SWFEmpireManagement em) { return Mem(Mem(em.GetRoot(), "centeredContent"), "coloniesWindow"); }
+
+    static Scaleform.Value EmScrollPane(Scaleform.Value cw)
+    {
+        double nd;
+        if (!Num(Mem(cw, "numChildren"), out nd)) return null;
+        for (int i = (int)nd - 1; i >= 0; i--)
+        {
+            Scaleform.Value c = cw.Invoke("getChildAt", i);
+            if (c == null || c.IsUndefined() || c.IsNull()) continue;
+            double pv;
+            if (Num(Mem(c, "verticalScrollPosition"), out pv) && Mem(c, "content") != null) return c;
+        }
+        return null;
+    }
+
+    static bool EmReadSort(Scaleform.Value sp, out string filter, out string dir)
+    {
+        filter = null; dir = null;
+        Scaleform.Value nm = Mem(Mem(sp, "content"), "name");
+        if (nm == null || !nm.IsString()) return false;
+        string[] parts = ((string)nm).Split('|');
+        if (parts.Length != 3 || parts[0] != "mfsort") return false;
+        filter = parts[1]; dir = parts[2];
+        return true;
+    }
+
+    static string EmHeaderButton(string filter)
+    {
+        switch (filter)
+        {
+            case "colony": return "colonyFilter";
+            case "population": return "populationFilter";
+            case "strike": return "strikeFilter";
+            case "credits": return "creditstFilter";
+            case "marines": return "marinesstFilter";
+            case "security": return "securityFilter";
+            case "morale": return "moraleFilter";
+            case "pollution": return "pollutionFilter";
+            case "food": return "foodFilter";
+            case "research": return "researchFilter";
+            case "production": return "productionValueFilter";
+            case "production queue": return "productionFilter";
+        }
+        return null;
+    }
+
+    // UIStateEmpireManagement.OnPresented: the screen became the top screen (opened, or back from the planet screen,
+    // which is pushed on top of it) and has just refilled its colony list (scroll position reset to the top).
+    public static bool Pre_UIStateEmpireManagement_OnPresented(UIStateEmpireManagement self, UIState from)
+    {
+        if (Bypassed()) return false;
+        bypass = true; self.OnPresented(from);
+        try
+        {
+            if (emSaved != null)
+            {
+                emTarget = self.GetSWF<SWFEmpireManagement>();
+                emFrames = 0;
+                Log("EMLIST presented (from " + (from == null ? "-" : from.GetType().Name) + "): restore pending, movie " + (emTarget == null ? "not found" : "found"));
+            }
+        }
+        catch (Exception e) { LogEx("empire list presented", e); }
+        return true;
+    }
+
+    public static bool Pre_SWFEmpireManagement_OnColonyClicked(SWFEmpireManagement self, int indexInColonyList)
+    {
+        if (Bypassed()) return false;
+        try
+        {
+            Civilization civ = Client.GetUniverse().GetLocalPlayerCivilization();
+            if (civ != null && indexInColonyList >= 0 && indexInColonyList < civ.Colonies.Count)
+            {
+                var st = new EmState { colony = civ.Colonies[indexInColonyList] };
+                Scaleform.Value sp = EmScrollPane(EmColonyWindow(self));
+                if (sp != null)
+                {
+                    Num(Mem(sp, "verticalScrollPosition"), out st.scroll);
+                    EmReadSort(sp, out st.filter, out st.dir);
+                }
+                emSaved = st; emSavedFrom = self; emTarget = null;
+                Log("EMLIST saved: colony " + st.colony.ColonizedPlanet.Name + ", scroll " + st.scroll.ToString("F0") + ", sort " + (st.filter ?? "?") + "/" + (st.dir ?? "?") + (sp == null ? " (scroll pane not found)" : ""));
+            }
+        }
+        catch (Exception e) { LogEx("empire list save", e); }
+        return false;                                                    // the original opens the planet
+    }
+
+    static void EmRestorePoll()
+    {
+        SWFEmpireManagement em = emTarget;
+        if (em == null) return;
+        if (!em.IsReady() || em.HasDelayedMethodCalls())
+        {   // the colony list is filled by a queued call when the movie was not loaded yet
+            if (++emFrames > 600) emTarget = null;
+            return;
+        }
+        emTarget = null;
+        EmState st = emSaved;
+        emSaved = null; emSavedFrom = null;
+        if (st == null) return;
+        Scaleform.Value cw = EmColonyWindow(em);
+        Scaleform.Value sp = EmScrollPane(cw);
+        if (cw == null || sp == null) { Log("EMLIST restore: " + (cw == null ? "colony window" : "scroll pane") + " not found"); return; }
+        string f, d;
+        string btnName = st.filter != null && st.dir != null ? EmHeaderButton(st.filter) : null;
+        if (btnName != null)
+        {   // header clicks: another column sorts "down", clicking the sorted column again toggles the direction
+            Scaleform.Value btn = Mem(Mem(cw, "headers"), btnName);
+            for (int t = 0; btn != null && t < 3; t++)
+            {
+                if (EmReadSort(sp, out f, out d) && f == st.filter && d == st.dir) break;
+                btn.Invoke("dispatchEvent", em.CreateObject("flash.events.MouseEvent", "click"));
+            }
+        }
+        Civilization civ = Client.GetUniverse().GetLocalPlayerCivilization();
+        int idx = civ != null && st.colony != null ? civ.Colonies.IndexOf(st.colony) : -1;
+        if (idx >= 0)
+        {
+            Scaleform.Value content = Mem(sp, "content");
+            double cd;
+            int cnt = Num(Mem(content, "numChildren"), out cd) ? (int)cd : 0;
+            for (int i = 0; i < cnt; i++)
+            {
+                Scaleform.Value w = content.Invoke("getChildAt", i);
+                double ci;
+                if (!Num(Mem(w, "colonyIndex"), out ci) || (int)ci != idx) continue;
+                w.Invoke("OnColonySelected", em.CreateObject("flash.events.MouseEvent", "click"));
+                break;
+            }
+        }
+        sp.SetMember("verticalScrollPosition", st.scroll);
+        double now; bool hasNow = Num(Mem(sp, "verticalScrollPosition"), out now);
+        string nf, nd; EmReadSort(sp, out nf, out nd);
+        Log("EMLIST restored after " + emFrames + " frames: colony index " + idx + ", scroll " + st.scroll.ToString("F0") + " -> " + (hasNow ? now.ToString("F0") : "?") + ", sort " + (nf ?? "?") + "/" + (nd ?? "?"));
     }
 
     public static bool Pre_SWFEmpireManagement_UpdateSpecificColony(SWFEmpireManagement self, Civilization civ, Colony colony, bool colonyFlagged)
@@ -1165,9 +2054,15 @@ public static class MooFix
             double gap = (now - lastLateUpdate) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
             if (gap >= 250)
             {
-                string scan = scanSkipped + scanEvaluated > 100000 ? " | node scans skipped " + scanSkipped + " / evaluated " + scanEvaluated : "";
-                Log("FRAME stall " + gap.ToString("F0") + "ms (server " + (st < 0 ? "-" : ((ServerState)st).ToString()) + ")" + scan);
-                if (scan.Length > 0) { scanSkipped = 0; scanEvaluated = 0; }
+                double tf = 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+                string scan = scanSkipped + scanEvaluated > 100000
+                    ? " | node scans skipped " + scanSkipped + " / evaluated " + scanEvaluated + ", systems skipped " + scanSystemsSkipped + ", scan total " + (scanTotalTicks * tf).ToString("F0") + "ms of which original evaluation " + (scanEvalTicks * tf).ToString("F0") + "ms"
+                    : "";
+                int gcNow = -1; long heap = 0;
+                try { gcNow = GC.CollectionCount(0); heap = GC.GetTotalMemory(false); } catch { }
+                string gcs = gcNow >= 0 ? " | GC " + (gcNow - lastGcCount) + "x since last frame, heap " + (heap >> 20) + " MB" : "";
+                Log("FRAME stall " + gap.ToString("F0") + "ms (server " + (st < 0 ? "-" : ((ServerState)st).ToString()) + ")" + gcs + scan);
+                if (scan.Length > 0) { scanSkipped = 0; scanEvaluated = 0; scanTotalTicks = 0; scanEvalTicks = 0; scanSystemsSkipped = 0; }
             }
         }
         if (st != lastServerState)
@@ -1176,7 +2071,9 @@ public static class MooFix
             lastServerState = st;
         }
         lastLateUpdate = now;
+        try { lastGcCount = GC.CollectionCount(0); } catch { }
     }
+    static int lastGcCount;
 
     // ---- Bottom bar notifications: VisualActionsSequencer processes a chunk of queued turn-result messages in one
     // frame and calls SWFEmpireBottomBar.RefreshNotifications for every MessageNotificationReceived. Each call rebuilds
@@ -1268,6 +2165,7 @@ public static class MooFix
     {
         try { MonitorFrame(); } catch { }
         try { FlushRadar(); } catch (Exception e) { LogEx("radar", e); }
+        try { EmRestorePoll(); } catch (Exception e) { emTarget = null; LogEx("empire list restore", e); }
         if (flushing) return false;
         if (planetPending.Count == 0 && topPending.Count == 0 && bottomPending.Count == 0 && empPending.Count == 0) return false;
         flushing = true;
@@ -1447,21 +2345,33 @@ public static class MooFix
     {
         if (Bypassed()) return false;
         if (ovSkipSim) { ovSkipSim = false; return true; }
-        if (Overlap && self.IsServer)
-        {   // timing only, for the log
+        if (self.IsServer)
+        {   // the server simulation runs inside Universe.RunAI: like an action, it must not use or fill the AI-stage
+            // caches (paths, path node info, planet ratings)
             long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
-            bypass = true; self.AdvanceSimulation();
-            Log("OVERLAP server simulation " + ((System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency).ToString("F0") + "ms (turn " + self.turn + ")");
+            if (pathCache != null) pathCache.Clear(); ClearPathState(); ClearRatingCache();
+            dispatchDepth++;
+            try { bypass = true; self.AdvanceSimulation(); }
+            finally { dispatchDepth--; if (pathCache != null) pathCache.Clear(); ClearPathState(); ClearRatingCache(); }
+            if (Overlap) Log("OVERLAP server simulation " + ((System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency).ToString("F0") + "ms (turn " + self.turn + ")");
+            LogSecurityStats("server");
             return true;
         }
         if (!self.IsServer)
         {   // client simulation: deficit advice checks are merged (see Pre_MajorCivilization_CheckDeficit)
             clientSimDepth++;
             try { bypass = true; self.AdvanceSimulation(); }
-            finally { if (--clientSimDepth == 0) FlushDeficitChecks(); }
+            finally { if (--clientSimDepth == 0) { FlushDeficitChecks(); LogSecurityStats("client"); } }
             return true;
         }
         return false;
+    }
+
+    static void LogSecurityStats(string side)
+    {
+        if (secGenHits + secGenMisses == 0) return;
+        Log("SECURITY " + side + " simulation: empire security during colony processing reused " + secGenHits + ", computed " + secGenMisses + " | settlement values in scopes reused " + valHits + ", computed " + valMisses);
+        secGenHits = 0; secGenMisses = 0; valHits = 0; valMisses = 0;
     }
 
     // ---- Deficit advice during the client's turn simulation: Colony.RefreshGrid (client only, once per colony whose
@@ -1520,8 +2430,18 @@ public static class MooFix
     public static bool Pre_Civilization_ScanNavigationNodesInRange(Civilization self, IPositionScanner scanner)
     {
         if (Bypassed()) return false;
+        long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { ScanNodes(self, scanner); }
+        finally { scanTotalTicks += System.Diagnostics.Stopwatch.GetTimestamp() - t0; }
+        return true;
+    }
+
+    static long scanTotalTicks, scanEvalTicks;   // statistics only (log)
+
+    static void ScanNodes(Civilization self, IPositionScanner scanner)
+    {
         Universe u = self.universe;
-        if (!u.isCreated) return true;
+        if (!u.isCreated) return;
         bool isValidScanner = !scanner.IsDeleted() && scanner.GetOwner().ID == self.ID;
         float range = -1f;                                   // < 0: unknown scanner type, no filtering
         GameCore.Utils.Vec3 sp = default(GameCore.Utils.Vec3);
@@ -1539,7 +2459,10 @@ public static class MooFix
             ScanOne(self, scanner, isValidScanner, star, range, sp, true);
         foreach (Star exploredStar in self.ExploredStars)
         {
-            ScanOne(self, scanner, isValidScanner, exploredStar, range, sp, true);
+            // whole system clearly out of range and nothing in it detected by this scanner: the star and its children
+            // are no-ops (see SystemFarAndClean); interstellar end points belong to other systems and are still evaluated
+            bool skipSystem = range >= 0f && SystemFarAndClean(self, exploredStar, scanner, isValidScanner, range, sp);
+            if (!skipSystem) ScanOne(self, scanner, isValidScanner, exploredStar, range, sp, true);
             // original: foreach child in Childs (= children list); foreach ep in GetAllInterstelarEndPoints()
             // (= connections.Where(m => m.GetStar() != child.GetStar())). Same lists, same order, without the
             // per-child LINQ enumerator allocations (1,800 scanners x every discovered child).
@@ -1548,7 +2471,8 @@ public static class MooFix
             {
                 NavigationNode child = kids[ci];
                 if (!child.WasDiscovered(self)) continue;
-                ScanOne(self, scanner, isValidScanner, child, range, sp, child is Star);
+                if (!skipSystem) ScanOne(self, scanner, isValidScanner, child, range, sp, child is Star);
+                else scanSkipped++;
                 List<NavigationNode> conns = child.connections;
                 Star childStar = child.GetStar();
                 for (int k = 0; k < conns.Count; k++)
@@ -1562,11 +2486,114 @@ public static class MooFix
         {
             if (!anomaly.consumed) ScanOne(self, scanner, isValidScanner, anomaly, range, sp, false);
         }
-        return true;
     }
 
-    static long scanSkipped, scanEvaluated;
+    static long scanSkipped, scanEvaluated, scanSystemsSkipped;
     static bool scanSetupErrorLogged;
+
+    // ---- Which scanner currently detects how many nodes of which star system. Node detection state
+    // (NavigationNode.scannersByCiv) is not saved and only changes in DetectionBeganBy / DetectionEndedBy, so wrapping
+    // those two methods gives an exact count. Keys are compared by reference (client and server objects share IDs).
+    sealed class RefEq : IEqualityComparer<object>
+    {
+        public static readonly RefEq I = new RefEq();
+        public new bool Equals(object a, object b) { return ReferenceEquals(a, b); }
+        public int GetHashCode(object o) { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(o); }
+    }
+    static readonly object detLock = new object();
+    static readonly Dictionary<object, Dictionary<object, int>> detByScanner = new Dictionary<object, Dictionary<object, int>>(RefEq.I);
+
+    static bool DetectionWrap(NavigationNode self, IPositionScanner scanner, bool began)
+    {
+        if (Bypassed()) return false;
+        if (scanner == null) return false;                    // original logs an error and returns
+        bool before = self.IsAlreadyDetectedBy(scanner);
+        try
+        {
+            bypass = true;
+            if (began) self.DetectionBeganBy(scanner); else self.DetectionEndedBy(scanner);
+        }
+        finally
+        {
+            bool after = self.IsAlreadyDetectedBy(scanner);
+            if (before != after)
+            {
+                object sys = (object)self.GetStar() ?? self;
+                lock (detLock)
+                {
+                    Dictionary<object, int> m;
+                    if (!detByScanner.TryGetValue(scanner, out m)) { m = new Dictionary<object, int>(RefEq.I); detByScanner.Add(scanner, m); }
+                    int c; m.TryGetValue(sys, out c);
+                    c += after ? 1 : -1;
+                    if (c <= 0) m.Remove(sys); else m[sys] = c;
+                    if (m.Count == 0) detByScanner.Remove(scanner);
+                }
+            }
+        }
+        return true;
+    }
+    public static bool Pre_NavigationNode_DetectionBeganBy(NavigationNode self, IPositionScanner scanner) { return DetectionWrap(self, scanner, true); }
+    public static bool Pre_NavigationNode_DetectionEndedBy(NavigationNode self, IPositionScanner scanner) { return DetectionWrap(self, scanner, false); }
+
+    static bool ScannerDetectsInSystem(IPositionScanner scanner, Star star)
+    {
+        lock (detLock)
+        {
+            Dictionary<object, int> m;
+            return detByScanner.TryGetValue(scanner, out m) && m.ContainsKey(star);
+        }
+    }
+
+    // radius of a star system = max distance of its direct children from the star (cached; recomputed when the number
+    // of children changes)
+    sealed class SysBound { public int count; public float r; }
+    [ThreadStatic] static Dictionary<object, SysBound> sysBounds;
+
+    static float SystemRadius(Star star)
+    {
+        if (sysBounds == null) sysBounds = new Dictionary<object, SysBound>(RefEq.I);
+        List<NavigationNode> kids = star.children;
+        SysBound b;
+        if (!sysBounds.TryGetValue(star, out b) || b.count != kids.Count)
+        {
+            if (b == null) { b = new SysBound(); sysBounds[star] = b; }
+            float r = 0f;
+            GameCore.Utils.Vec3 c = star.Position;
+            for (int i = 0; i < kids.Count; i++) { float d = (kids[i].Position - c).Length(); if (d > r) r = d; }
+            b.count = kids.Count; b.r = r;
+        }
+        return b.r;
+    }
+
+    // true when the star and every direct child are farther than the scanner can detect (with margins: triangle
+    // inequality + the same float margin as ScanOne) and the scanner detects nothing in the system: then each of them
+    // would be skipped by ScanOne as well.
+    static bool SystemFarAndClean(Civilization self, Star star, IPositionScanner scanner, bool valid, float range, GameCore.Utils.Vec3 sp)
+    {
+        try
+        {
+            float thr = Math.Max(range, (range + star.GetDetectionDistance()) * star.GetDetectionRangeMultiplier());
+            float dist = (sp - star.Position).Length();
+            float r = SystemRadius(star);
+            if (dist - r <= thr * 1.0001f + 0.05f) return false;
+            if (ScannerDetectsInSystem(scanner, star)) return false;
+            if (Verify && Sample())
+            {
+                bool bad = star.IsAlreadyDetectedBy(scanner) || (valid && self.IsCelestialBodyVisibleBy(star, scanner));
+                List<NavigationNode> kids = star.children;
+                for (int i = 0; i < kids.Count && !bad; i++)
+                {
+                    NavigationNode k = kids[i];
+                    if (k.IsAlreadyDetectedBy(scanner)) bad = true;
+                    else if (valid && k is CelestialBody && k.WasDiscovered(self) && self.IsCelestialBodyVisibleBy(k as CelestialBody, scanner)) bad = true;
+                }
+                if (bad) { Mismatch("ScanNavigationNodesInRange system skip", true, false); return false; }
+            }
+            scanSystemsSkipped++;
+            return true;
+        }
+        catch { return false; }
+    }
 
     static void ScanOne(Civilization self, IPositionScanner scanner, bool valid, NavigationNode node, float range, GameCore.Utils.Vec3 sp, bool isStar)
     {
@@ -1598,7 +2625,9 @@ public static class MooFix
             }
         }
         scanEvaluated++;
-        self.EvaluateScanDetection(scanner, valid, node);
+        long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { self.EvaluateScanDetection(scanner, valid, node); }
+        finally { scanEvalTicks += System.Diagnostics.Stopwatch.GetTimestamp() - t0; }
     }
 
     // ------------------------------------------------------------------ star separation matrix (load)

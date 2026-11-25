@@ -53,6 +53,8 @@ var hooks = new (string type, string method, string hook)[] {
   ("Backend.Settlements.Colony","GetAvailableBuildables","Pre_Colony_GetAvailableBuildables"),
   ("SWFEmpireManagement","LoadColoniesData","Pre_SWFEmpireManagement_LoadColoniesData"),
   ("SWFEmpireManagement","UpdateSpecificColony","Pre_SWFEmpireManagement_UpdateSpecificColony"),
+  ("SWFEmpireManagement","OnColonyClicked","Pre_SWFEmpireManagement_OnColonyClicked"),
+  ("UIStateEmpireManagement","OnPresented","Pre_UIStateEmpireManagement_OnPresented"),
   ("SWFPlanet","Refresh","Pre_SWFPlanet_Refresh"),
   ("SWFEmpireTopBar","SendEmpireData","Pre_SWFEmpireTopBar_SendEmpireData"),
   ("Backend.Civilizations.MajorCivilization","UpdateNotifications","Pre_MajorCivilization_UpdateNotifications"),
@@ -87,6 +89,47 @@ var hooks = new (string type, string method, string hook)[] {
   ("SpatialData","BuildTerritory","Pre_SpatialData_BuildTerritory"),
   ("Backend.Galaxy.NavigationNode","GetConnectedStars","Pre_NavigationNode_GetConnectedStars"),
   ("TimelineManager","GetTurnData","Pre_TimelineManager_GetTurnData"),
+  // empire security cached across colony OnTurns (generation number bumped on every relevant change)
+  ("Backend.Civilizations.Civilization","ProcessSettlementsOnTurn","Pre_Civilization_ProcessSettlementsOnTurn"),
+  ("Backend.Settlements.Settlement","AddStructure","Pre_Settlement_AddStructure"),
+  ("Backend.Settlements.Settlement","DemolishStructure","Pre_Settlement_DemolishStructure"),
+  ("Backend.Settlements.Settlement","DemolishStructure","Pre_Settlement_DemolishStructure2"),
+  ("Backend.Settlements.Settlement","DemolishStructure","Pre_Settlement_DemolishStructureCore"),
+  ("Backend.Settlements.Colony","DemolishStructure","Pre_Colony_DemolishStructureCore"),
+  ("Backend.Settlements.NodeDevelopment","DemolishStructure","Pre_NodeDevelopment_DemolishStructureCore"),
+  ("Backend.Settlements.Settlement","ChangeOwner","Pre_Settlement_ChangeOwner"),
+  ("Backend.Settlements.Colony","ChangeOwner","Pre_Colony_ChangeOwner"),
+  ("Backend.Civilizations.Civilization","OnColonyOwned","Pre_Civilization_OnColonyOwned"),
+  ("Backend.Civilizations.MajorCivilization","OnColonyOwned","Pre_MajorCivilization_OnColonyOwned"),
+  ("Backend.Civilizations.Civilization","OnColonyLost","Pre_Civilization_OnColonyLost"),
+  ("Backend.Civilizations.MajorCivilization","OnColonyLost","Pre_MajorCivilization_OnColonyLost"),
+  ("Backend.Civilizations.PirateCivilization","OnColonyLost","Pre_PirateCivilization_OnColonyLost"),
+  ("Backend.Fleets.ColonyAttackResult","Bombard","Pre_ColonyAttackResult_Bombard"),
+  // AI stage: closest empire location per target star, non-settlement pact neighbour set
+  ("AI.Awareness","GetClosestLocationInEmpireTo","Pre_Awareness_GetClosestLocationInEmpireTo"),
+  ("Backend.Civilizations.MajorCivilization","CheckIfPlanetWouldBeUnderNonSettlementPact","Pre_MajorCivilization_CheckIfPlanetWouldBeUnderNonSettlementPact"),
+  // allocation-free versions of hot allocating methods
+  ("Backend.Galaxy.Star","HasAllConnectionsDiscoveredBy","Pre_Star_HasAllConnectionsDiscoveredBy"),
+  ("Backend.Settlements.ColonyStructureType","IsCompatible","Pre_ColonyStructureType_IsCompatible"),
+  ("Backend.Civilizations.MajorCivilization","GetEmpireStructureSecurityBonus","Pre_MajorCivilization_GetEmpireStructureSecurityBonus"),
+  ("Backend.Civilizations.Civilization","GetStarSystemLeaderBonusValue","Pre_Civilization_GetStarSystemLeaderBonusValue"),
+  // per-settlement values copied into every observer's known data (memoized inside cache scopes)
+  ("Backend.Settlements.Colony","GetCreditOutput","Pre_Colony_GetCreditOutput"),
+  ("Backend.Settlements.Colony","GetUpkeepValue","Pre_Colony_GetUpkeepValue"),
+  ("Backend.Settlements.Colony","GetSecurityRating","Pre_Colony_GetSecurityRating"),
+  ("Backend.Settlements.Settlement","GetOrbitalDefenseRating","Pre_Settlement_GetOrbitalDefenseRating"),
+  // node detection bookkeeping (scanner -> star systems it detects nodes in) for system-level scan skipping
+  ("Backend.Galaxy.NavigationNode","DetectionBeganBy","Pre_NavigationNode_DetectionBeganBy"),
+  ("Backend.Galaxy.NavigationNode","DetectionEndedBy","Pre_NavigationNode_DetectionEndedBy"),
+  // AI: engage target index, travel region timing
+  ("AI.T_Engage","BoostPriorityOfBlockingSettlements","Pre_T_Engage_BoostPriorityOfBlockingSettlements"),
+  ("Backend.Galaxy.NavigationNode","CacheCanTravelRegions","Pre_NavigationNode_CacheCanTravelRegions"),
+  // AI planet rating cache (AI stage) and the AI-internal state changes that invalidate it
+  ("AI.Awareness","GetPlanetRating","Pre_Awareness_GetPlanetRating"),
+  ("AI.Awareness","UpdateEmpire","Pre_Awareness_UpdateEmpire"),
+  ("AI.Awareness","CalculateStarCentrality","Pre_Awareness_CalculateStarCentrality"),
+  ("AI.SP_GeneralStrategy","RefreshIndependentCivilizations","Pre_SP_GeneralStrategy_RefreshIndependentCivilizations"),
+  ("AI.SP_GeneralStrategy","RefreshTargetVictoryCondition","Pre_SP_GeneralStrategy_RefreshTargetVictoryCondition"),
   // load: star separation matrix with a faithful, faster A*
   ("SpatialData","BuildStarsTravelDistance","Pre_SpatialData_BuildStarsTravelDistance"),
   // scanner node detection: skip nodes that are clearly out of range (load, espionage, visibility updates)

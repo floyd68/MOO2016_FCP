@@ -69,6 +69,26 @@ Measured with the `FRAME stall` monitor (gaps ≥ 250 ms between frames) in the 
 
 Overlapped turn simulation (experimental): same turn sequential 6.9 s + 7.6 s, overlapped 6.7 s ‖ 8.1 s → freeze ~8 s instead of ~15 s.
 
+## Third round (AI caches, allocations, A\* heap)
+
+Same save (turn 227 → 228), regular build, overlap on, verification off, `FRAME stall` and MooFix timers.
+
+| Item | After the second round | After the third round | Main fixes |
+|---|---|---|---|
+| **Loading the save** (one frame) | 10.6–11.1 s | **9.1–9.2 s** | system-level scan skip, allocation-free tradeable resources, array heap |
+| Star separation matrix (per universe) | 0.55 s | **0.14 s** | array heap |
+| **Screen freeze per turn** | 7.15 s | **4.7–5.3 s** | below |
+| Client / server simulation | 5.96 s / 5.93 s | **3.5–3.6 s / 3.5–3.6 s** | security generation cache, settlement value memo, allocation-free replacements |
+| Garbage collections in the turn frame | 8 (~150 ms each) | **3** | allocation-free replacements (~600 → ~150 MB per side, profiling build) |
+| Empire security recomputed during colony processing | ~1,040 per side | 52 | generation cache |
+| AI stage, 8 AI empires (excluding the simulation) | 7.75 s (with the planet rating cache) | **6.47 s** | closest-location and pact memos, array heap |
+
+Verification-mode runs (same turn): 0 mismatches for paths (509), star pairs (3,844), planet ratings, empire security,
+settlement values and the allocation-free replacements; checksums matched in every run.
+
+Empire Management first opening, measured inside Flash: building the 356 rows takes 1.55–1.6 s (row widgets 0.83–0.86 s,
+dropdown data 0.21 s) of a 4.6–5.5 s frame; the rest is loading the movie. Not changed (see [08](08_REMAINING_WORK.md)).
+
 ---
 
 ## 한국어 (Korean)
@@ -136,3 +156,21 @@ Overlapped turn simulation (experimental): same turn sequential 6.9 s + 7.6 s, o
 | 타임라인 턴 데이터 | 직렬화 0.44~0.6초 + LZ4 HC 0.47초, 턴당 2.9MB | LZ4 빠른 압축 56~63ms, 턴당 3.9MB. 이렇게 저장한 세이브도 정상 로딩 | 빠른 압축 |
 
 턴 시뮬레이션 겹치기(실험): 같은 턴 순차 6.9초 + 7.6초, 겹치면 6.7초 ‖ 8.1초 → 멈춤 약 15초 → 약 8초.
+
+#### 3차 (AI 캐시, 할당, A\* 힙)
+
+같은 세이브(227 → 228턴), 일반 빌드, 겹치기 켬, 검증 모드 끔. `FRAME stall`과 MooFix 타이머 기준.
+
+| 항목 | 2차 후 | 3차 후 | 주요 수정 |
+|---|---|---|---|
+| **세이브 로딩**(한 프레임) | 10.6~11.1초 | **9.1~9.2초** | 항성계 단위 스캔 건너뛰기, 교역 자원 할당 제거, 배열 힙 |
+| 별 거리 행렬(universe당) | 0.55초 | **0.14초** | 배열 힙 |
+| **턴당 화면 멈춤** | 7.15초 | **4.7~5.3초** | 아래 |
+| 클라이언트 / 서버 시뮬레이션 | 5.96초 / 5.93초 | **3.5~3.6초 / 3.5~3.6초** | 보안 세대 캐시, 정착지 값 메모, 할당 없는 대체 구현 |
+| 턴 프레임 안의 GC | 8회(회당 약 150ms) | **3회** | 할당 없는 대체 구현(한쪽 약 600 → 약 150MB, 측정 빌드) |
+| 식민지 처리 중 제국 보안 재계산 | 한쪽 약 1,040회 | 52회 | 세대 캐시 |
+| AI 단계, AI 제국 8개(시뮬레이션 제외) | 7.75초(행성 평가 캐시 적용 후) | **6.47초** | 가장 가까운 위치·협정 메모, 배열 힙 |
+
+검증 모드 실행(같은 턴): 경로(509건), 별 쌍(3,844건), 행성 평가, 제국 보안, 정착지 값, 할당 없는 대체 구현 모두 불일치 0. 모든 실행에서 체크섬 일치.
+
+제국 관리 첫 진입을 Flash 안에서 측정: 4.6~5.5초 프레임 중 356행 생성이 1.55~1.6초(행 위젯 0.83~0.86초, 드롭다운 데이터 0.21초), 나머지는 무비 불러오기. 변경하지 않음([08](08_REMAINING_WORK.md) 참고).

@@ -6,6 +6,13 @@
 - Methods with a prefix are **double counted** by the profiling wrapper (it wraps both prefix and original).
 - When Unity frames are slow, Scaleform **runs missed SWF frames several times** (typically 3 observed). Flash cost = per-frame cost × repetitions.
 - Scaleform's `DoHitTest` had a large fixed cost independent of the test type (shape/bounds), presumably whole-movie processing. Only after diagnostics showed "always true" could it be skipped safely.
+- **Old runtime = expensive garbage.** Unity 5.2's Mono uses the Boehm GC (full, non-generational, not tunable from outside:
+  `mono.dll` only reads `GC_DONT_GC`). One collection of a ~600 MB heap took ~150 ms, and the same ~148 ms "max" showed up
+  in many unrelated methods of the profile. Counting collections in the frame-stall line, then attributing allocations per
+  method (heap-in-use delta between entry and exit, calls with a collection inside skipped) found five methods responsible for
+  ~3/4 of all garbage. Replacing them cut turn simulation more than any cache of that round.
+- The .NET version cannot be upgraded: the runtime is embedded in the Unity player, so `Span`, SIMD, TPL or a modern GC are
+  out of reach; hand-written loops and plain threads are the tools.
 
 ## Correctness
 - Single-player still runs server and client simulations and compares checksums → simulation code must produce **bit-identical values**. Mind floating-point summation order (swapping two terms is safe, regrouping three or more is not).
@@ -26,12 +33,23 @@
 - Two simulations running at the same time also share **static** state (checksum helpers, debug lists): audit statics and
   serialize the ones that are written, and keep a fallback (the game's own out-of-sync recovery).
 - Hook a method only once: a duplicate entry in the hooks table injects two prefixes.
+- **A failed A\* search still has a result.** The game returns the path to the closest reached node and the AI computes ETAs
+  from it, so "unreachable" cannot be short-circuited by a reachability check; only the cost per search can be reduced.
+- **Copying a heap means copying its quirks.** The game pushes the same mutable `Node` again and changes its `f` while it is
+  still in the heap; a faithful replacement must compare *current* values of the referenced cell, not snapshot keys.
+- A cache scope that is "per refresh" can still be O(N²) overall (security recomputed for every refresh). A generation counter
+  bumped around every state-changing method gives a longer validity window without guessing.
+- The server turn simulation runs *inside* `Universe.RunAI`: any "AI stage" cache must treat it like an action.
 
 ## UI
 - When messages are never coalesced, simply processing refreshes once per frame gives a big win.
 - Lazily filling hidden rows can create multi-second freezes **when many rows become visible at once** (long drag) → per-frame budget and keep unfilled rows hidden.
 - Flash drags must listen to MOUSE_MOVE/UP on `stage`, otherwise moving over empty space ends the drag.
 - When hiding rows, check when the scroll height is measured (here: in `Fill()`, while all rows are visible).
+- Scaleform `Value` numbers come as `VT_Int`, `VT_UInt` or `VT_Number`; the implicit `double` conversion of an int value
+  returned 0 (`numChildren` = 0, so nothing was found). Read each type with its own getter.
+- Opening a planet from Empire Management does not close it: the planet screen is pushed on top and the list is refilled when
+  the screen is presented again. Restore UI state in `OnPresented`, after the refill — not when the list data is loaded.
 
 ## Tools
 - FFDec's AS3 recompilation can change runtime behavior even when the decompiled source looks identical → only replace method bodies with P-code.
@@ -58,6 +76,8 @@
 - prefix가 있는 메서드는 측정 래퍼에 **이중 집계**된다.
 - Unity 프레임이 느리면 Scaleform이 **밀린 SWF 프레임을 여러 번 실행**한다(관측: 보통 3번).
 - Scaleform의 `DoHitTest`는 검사 종류와 무관하게 큰 고정 비용이 있었다. "항상 true"를 진단으로 확인한 뒤에야 안전하게 생략할 수 있었다.
+- **오래된 런타임 = 비싼 쓰레기.** Unity 5.2의 Mono는 Boehm GC(전체 수집, 세대 구분 없음, 외부 설정 불가: `mono.dll`은 `GC_DONT_GC`만 읽음)를 씀. 약 600MB 힙의 수집 1회가 약 150ms였고, 측정 결과에서 서로 관계없는 여러 메서드의 최대값이 똑같이 약 148ms로 나타남. 화면 멈춤 로그에 GC 횟수를 넣고, 메서드별 할당량(진입·종료 시 힙 사용량 차이, 그 사이 GC가 있던 호출은 제외)을 집계하자 쓰레기의 약 3/4이 메서드 5개에서 나옴. 이를 바꾼 것이 그 회차의 어떤 캐시보다 턴 시뮬레이션을 많이 줄였음.
+- .NET 버전은 올릴 수 없음: 런타임이 Unity 플레이어에 내장되어 있어 `Span`, SIMD, TPL, 최신 GC를 쓸 수 없음. 손으로 쓴 루프와 직접 만든 스레드가 도구.
 
 #### 정확성
 - 싱글플레이도 서버·클라이언트 이중 시뮬레이션 + 체크섬 비교 → 시뮬레이션 코드는 **비트 단위로 같은 값**이어야 함(교환은 안전, 결합 순서는 위험).
@@ -72,12 +92,18 @@
 - 허용 가능하지 않은 휴리스틱(거리 제곱)이면 A*가 최단 경로를 내지 않음. "더 나은" 알고리즘(BFS)으로 바꾸면 AI 행동이 달라짐 → 교체가 아니라 충실한 재구현.
 - 두 시뮬레이션을 동시에 돌리면 **정적(static) 상태**도 공유함(체크섬 도우미, 디버그 목록). 정적 필드를 조사해 쓰기가 있는 것은 직렬화하고, 대비책(게임 자체의 동기화 오류 복구)을 남길 것.
 - 같은 메서드는 한 번만 훅: 훅 표에 중복 항목이 있으면 prefix가 두 번 삽입됨.
+- **실패한 A\* 탐색에도 결과가 있다.** 게임은 가장 가까이 도달한 노드까지의 경로를 돌려주고 AI는 그것으로 도착 시간을 계산함 → 도달 가능성 검사로 "도달 불가"를 건너뛸 수 없고, 탐색 한 번의 비용만 줄일 수 있음.
+- **힙을 옮기면 그 특이 동작까지 옮겨야 한다.** 게임은 같은 가변 `Node`를 다시 넣고, 힙에 남아 있는 동안 `f`를 바꿈 → 충실한 대체는 키 사본이 아니라 칸의 *현재* 값을 비교해야 함.
+- "갱신마다"인 캐시 범위도 전체로는 O(N²)일 수 있음(갱신마다 보안 재계산). 상태를 바꾸는 모든 메서드 전후에 올리는 세대 번호로 추측 없이 유효 구간을 넓힘.
+- 서버 턴 시뮬레이션은 `Universe.RunAI` *안에서* 실행됨: "AI 단계" 캐시는 이것을 행동과 똑같이 취급해야 함.
 
 #### UI
 - 병합 없는 메시지 구조에서는 "프레임당 1회 처리"만으로 큰 효과.
 - 지연 SetData는 한 번에 많은 행이 보일 때(긴 드래그) 오히려 긴 멈춤 → 프레임당 처리량 제한 + 처리 전 행 숨김.
 - Flash 드래그는 `stage`에서 MOUSE_MOVE/UP을 받아야 한다.
 - 행을 숨길 때 스크롤 높이 계산 시점 확인(`Fill()`, 모든 행이 visible일 때).
+- Scaleform `Value`의 숫자는 `VT_Int`, `VT_UInt`, `VT_Number`로 옴. int 값을 암묵적 `double` 변환으로 읽으면 0이 됨(`numChildren` = 0 → 아무것도 못 찾음). 형식마다 맞는 getter로 읽을 것.
+- 제국 관리에서 행성을 열어도 화면은 닫히지 않음: 행성 화면이 위에 쌓이고, 다시 표시될 때 목록을 새로 채움 → UI 상태 복원은 목록 데이터를 불러올 때가 아니라 다시 채운 뒤 `OnPresented`에서.
 
 #### 도구
 - FFDec AS3 재컴파일은 소스가 같아 보여도 동작이 달라질 수 있음 → 메서드 본문 P-code 교체만.

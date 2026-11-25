@@ -13,7 +13,15 @@ public static class MooPerfLog
     [ThreadStatic] static Dictionary<string, Stat> stats;
     [ThreadStatic] static long lastDump;
 
-    class Stat { public long count; public double total; public double max; }
+    class Stat { public long count; public double total; public double max; public long alloc; public long gcIn; }
+
+    // Allocation attribution (approximate): managed heap in use (GC.GetTotalMemory(false)) at Begin and End. Calls with
+    // a collection in between are not measured (gcIn counts those collections instead: the deepest methods with gcIn
+    // are where collections were triggered). "self" = this call minus its instrumented children. Heap growth is seen in
+    // block-sized steps, so only totals over many calls are meaningful; other threads allocating at the same time are
+    // attributed here as well (measure with the overlapped simulation off).
+    [ThreadStatic] static long[] heapAt, childAlloc;
+    [ThreadStatic] static int[] gcAt;
 
     static StreamWriter W()
     {
@@ -31,6 +39,16 @@ public static class MooPerfLog
     public static long Begin()
     {
         depth++;
+        try
+        {
+            if (heapAt == null || depth >= heapAt.Length)
+            {
+                int n = Math.Max(64, depth * 2);
+                Array.Resize(ref heapAt, n); Array.Resize(ref childAlloc, n); Array.Resize(ref gcAt, n);
+            }
+            if (depth >= 0) { heapAt[depth] = GC.GetTotalMemory(false); gcAt[depth] = GC.CollectionCount(0); childAlloc[depth] = 0; }
+        }
+        catch { }
         return Stopwatch.GetTimestamp();
     }
 
@@ -44,6 +62,19 @@ public static class MooPerfLog
     public static void End(long t0, string name)
     {
         long now = Stopwatch.GetTimestamp();
+        int d = depth;
+        long incl = -1, gcs = 0;
+        try
+        {
+            if (heapAt != null && d >= 0 && d < heapAt.Length)
+            {
+                int gcNow = GC.CollectionCount(0);
+                gcs = gcNow - gcAt[d];
+                if (gcs == 0) incl = GC.GetTotalMemory(false) - heapAt[d];
+                if (incl >= 0 && d >= 1) childAlloc[d - 1] += incl;
+            }
+        }
+        catch { }
         depth--;
         double ms = (now - t0) * 1000.0 / Stopwatch.Frequency;
         try
@@ -52,6 +83,8 @@ public static class MooPerfLog
             Stat s;
             if (!stats.TryGetValue(name, out s)) { s = new Stat(); stats[name] = s; }
             s.count++; s.total += ms; if (ms > s.max) s.max = ms;
+            s.gcIn += gcs;
+            if (incl >= 0) { long self = incl - childAlloc[d]; if (self > 0) s.alloc += self; }
 
             if (ms >= ThresholdMs)
             {
@@ -84,6 +117,16 @@ public static class MooPerfLog
                     kv.Value.total, kv.Value.count, kv.Value.total / kv.Value.count, kv.Value.max, kv.Key));
             }
             w.WriteLine("---- end STATS ----");
+            list.Sort((a, b) => b.Value.alloc.CompareTo(a.Value.alloc));
+            w.WriteLine(string.Format("---- ALLOC T{0} ({1}) top by allocated MB (self, approximate) | GCs inside (inclusive) ----", Thread.CurrentThread.ManagedThreadId, why));
+            n = 0;
+            foreach (var kv in list)
+            {
+                if (kv.Value.alloc < (1 << 20) || n++ >= 50) break;
+                w.WriteLine(string.Format("  {0,8:F1} MB {1,9} calls {2,8:F1} KB avg {3,4} GCs  {4}",
+                    kv.Value.alloc / 1048576.0, kv.Value.count, kv.Value.alloc / 1024.0 / kv.Value.count, kv.Value.gcIn, kv.Key));
+            }
+            w.WriteLine("---- end ALLOC ----");
         }
         stats.Clear();
         lastDump = now;
