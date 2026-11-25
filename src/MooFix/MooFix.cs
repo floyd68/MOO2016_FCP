@@ -16,6 +16,9 @@ public static class MooFix
     [ThreadStatic] static bool bypass;
     static bool Bypassed() { if (bypass) { bypass = false; return true; } return false; }
 
+    // shown next to the UCP version on the main menu (UIVersion); keep in sync with the release tag
+    public const string FcpVersion = "v1.0.0";
+
     public static readonly bool Verify;
     public static readonly bool Overlap;   // experimental: overlapped turn simulation (moofix_overlap.txt)
     static readonly object logLock = new object();
@@ -37,7 +40,7 @@ public static class MooFix
             log.AutoFlush = true;
         }
         catch { }
-        Log("MooFix loaded. verify=" + Verify + " overlap=" + Overlap);
+        Log("MooFix " + FcpVersion + " loaded. verify=" + Verify + " overlap=" + Overlap);
     }
 
     public static void Log(string s)
@@ -1849,6 +1852,24 @@ public static class MooFix
             i = m;
         }
         return top;
+    }
+
+    // ---- Version watermark (main menu, crash report): "... **** UCP-S.0.6.4b **** **** FCP v1.0.0 **** Seed: ..."
+    public static bool Pre_UIVersion_GetBuildString(UIVersion self, out string result)
+    {
+        result = null;
+        if (Bypassed()) return false;
+        try
+        {
+            bypass = true;
+            string s = self.GetBuildString();
+            string ucp = "**** " + self.GetUCPVersion() + " ****";
+            string fcp = " **** FCP " + FcpVersion + " ****";
+            int i = s.IndexOf(ucp);
+            result = i >= 0 ? s.Insert(i + ucp.Length, fcp) : s + fcp;
+            return true;
+        }
+        catch (Exception e) { LogEx("GetBuildString", e); return false; }
     }
 
     // ---- Shader warm-up: compile all loaded shaders at the end of loading (~5 s more loading), so the first display of

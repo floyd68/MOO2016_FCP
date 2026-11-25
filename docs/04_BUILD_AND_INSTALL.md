@@ -166,6 +166,18 @@ awk '/STATS T3 \(after Universe.RunAI/{f=1;next} /end STATS/{f=0} f{print}' perf
 ```
 Command Prompt: `findstr /c:"STATS" perf_log.txt`, `findstr /c:"Universe.RunAI" perf_log.txt`.
 
+## Binary release (maintainer)
+
+`./tools/make_release.sh <version>` (Git Bash) builds `build/dist/MOO2016_FCP-<version>.zip`:
+the normal build, then `tools/FcpPatch` (installer, .NET Framework 4.8) and `tools/FixPatcher48` (the same FixPatcher source built for
+.NET Framework 4.8), a delta of the SWF (`FcpPatch make`; SWFs are compared decompressed), `files/manifest.txt` with the SHA-256 of the
+three build results, and the templates in `tools/release/`. The version must equal `MooFix.FcpVersion` (shown on the main menu).
+
+On the user's PC `install.cmd` → `find_moo.cmd` → `FcpPatch install`: the same checks as `BuildHelper prepare-target`, then
+`FixPatcher.exe patch` for the two DLLs (Cecil output is deterministic: byte-identical to the build) and the delta for the SWF
+(recompressed; the manifest stores the hash of the decompressed SWF). Any mismatch → nothing is written.
+A binary delta was not used for the DLLs: Cecil rewrites the metadata layout, so ~87 % of such a delta would be the game's own code.
+
 ## When UCP or the game is updated
 
 1. The build stops at the hash check. Update the hashes in `tools/BuildHelper/Program.cs` (`Originals`) after confirming the new files.
@@ -274,6 +286,13 @@ MOO_DIR='D:/Games/Steam/steamapps/common/Master of Orion' ./build.sh
 - `build\perf`: 약 1,760개 메서드에 시간 측정 래퍼 + `MooPerf.dll`, SWF는 Flash 진단 버전. `install.cmd build\perf`(또는 `./install.sh build/perf`)로 설치하면 `MooPerf.dll`도 자동 복사되고, 릴리스 빌드를 설치하면 다시 삭제됩니다.
 - 출력 `perf_log.txt`: 15ms 이상 호출, 20초/턴/AI 단계별 메서드 누적 통계, 무비 메서드는 `@무비클래스` 접미사.
 - prefix가 있는 메서드는 이중 집계, 초고빈도 메서드 래핑은 측정 왜곡 → 최종 수치는 측정 코드 없는 빌드로.
+
+#### 바이너리 릴리스 (관리자용)
+
+`./tools/make_release.sh <버전>`(Git Bash)이 `build/dist/MOO2016_FCP-<버전>.zip`을 만듭니다: 일반 빌드 → `tools/FcpPatch`(설치 프로그램, .NET Framework 4.8)와 `tools/FixPatcher48`(같은 FixPatcher 소스의 .NET Framework 4.8 빌드) → SWF 차이 파일(`FcpPatch make`, SWF는 압축을 푼 내용끼리 비교) → 빌드 결과 3개의 SHA-256을 담은 `files/manifest.txt` → `tools/release/` 템플릿. 버전은 `MooFix.FcpVersion`(메인 메뉴 표시)과 같아야 합니다.
+
+사용자 PC에서는 `install.cmd` → `find_moo.cmd` → `FcpPatch install`: `BuildHelper prepare-target`과 같은 검사 후, DLL 두 개는 `FixPatcher.exe patch`(Cecil 출력은 결정적: 빌드와 바이트 동일), SWF는 차이 파일 적용(다시 압축, 매니페스트에는 압축을 푼 SWF의 해시). 하나라도 다르면 아무것도 쓰지 않습니다.
+DLL에 바이너리 차이를 쓰지 않은 이유: Cecil이 메타데이터 배치를 다시 쓰므로 차이 파일의 약 87%가 게임 코드가 됨.
 
 #### UCP/게임이 업데이트되었을 때
 1. 해시 검사에서 빌드가 멈춤 → 새 파일을 확인한 뒤 `tools/BuildHelper/Program.cs`의 `Originals` 해시를 갱신.

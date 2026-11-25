@@ -151,6 +151,7 @@ only even turns overlap (for comparisons). Delete the file to turn it off (no re
 
 `FRAME stall` (gaps ≥ 250 ms between frames, with the server state, garbage collections and heap size), `SERVER state`, `PLANET refresh`,
 `NOTIF`, `RADAR`, `STARDIST`, `DEFICIT`, `TIMELINE`, `OVERLAP`, `SECURITY`, `FLASH`, `EMLIST`, `AI RunAI`, `MOVIE`, `STAGE`, `SWFCALL`, `WARMUP` lines in `moofix_log.txt`.
+`UIVersion.GetBuildString` appends `**** FCP <version> ****` after the UCP version (main menu watermark, crash report).
 The profiling build (`MooPerf`) also prints, per method, the allocated MB (self, approximate) and the collections that happened inside.
 
 ## J. How it was verified
@@ -287,7 +288,7 @@ MooFix에서 원본을 호출할 때: `bypass = true; self.Method(...)` (호출�
 
 #### I. 진단 (로그만)
 
-`moofix_log.txt`의 `FRAME stall`(250ms 이상 프레임 간격과 서버 상태, GC 횟수, 힙 크기), `SERVER state`, `PLANET refresh`, `NOTIF`, `RADAR`, `STARDIST`, `DEFICIT`, `TIMELINE`, `OVERLAP`, `SECURITY`, `FLASH`, `EMLIST`, `AI RunAI`, `MOVIE`, `STAGE`, `SWFCALL`, `WARMUP` 줄. 측정 빌드(`MooPerf`)는 메서드별 할당량(MB, 자기 몫, 근사)과 그 안에서 일어난 GC 횟수도 출력합니다.
+`moofix_log.txt`의 `FRAME stall`(250ms 이상 프레임 간격과 서버 상태, GC 횟수, 힙 크기), `SERVER state`, `PLANET refresh`, `NOTIF`, `RADAR`, `STARDIST`, `DEFICIT`, `TIMELINE`, `OVERLAP`, `SECURITY`, `FLASH`, `EMLIST`, `AI RunAI`, `MOVIE`, `STAGE`, `SWFCALL`, `WARMUP` 줄. `UIVersion.GetBuildString`이 UCP 버전 뒤에 `**** FCP <버전> ****`을 덧붙임(메인 메뉴 표시, 오류 보고). 측정 빌드(`MooPerf`)는 메서드별 할당량(MB, 자기 몫, 근사)과 그 안에서 일어난 GC 횟수도 출력합니다.
 
 #### J. 검증 방법
 

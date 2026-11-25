@@ -36,9 +36,22 @@ Experimental: overlapping the server and client turn simulations (`moofix_overla
 
 Details: [docs/03_MEASUREMENTS.md](docs/03_MEASUREMENTS.md)
 
+## Install without building (binary release)
+
+1. Requirements: Windows 10/11, *Master of Orion: Conquer the Stars* (Steam) with **UCP 6.4b** installed.
+2. Download `MOO2016_FCP-<version>.zip` from [Releases](https://github.com/floyd68/MOO2016_FCP/releases), extract it anywhere, close the game and run **`install.cmd`**
+   (or `install.cmd "D:\SteamLibrary\steamapps\common\Master of Orion"` if the folder is not found automatically).
+3. `uninstall.cmd` restores the original files.
+
+Nothing else is needed (.NET Framework 4.8 is part of Windows). The package contains **no game or UCP code**: the two game DLLs
+are patched on your PC by the same Mono.Cecil patcher the build uses, the SWF gets a 2 KB delta of the changed P-code, and every
+result is checked against the SHA-256 recorded for the release. The same safety check as the build's `install` applies
+(UCP 6.4b originals, or this patch with UCP 6.4b `*.orig` backups; otherwise nothing is changed).
+The main menu shows `**** FCP <version> ****` next to the UCP version when the patch is active.
+
 ## Prerequisites
 
-Install these before building:
+To build it yourself, install these first:
 
 | # | What | Version / notes | Where |
 |---|---|---|---|
@@ -111,6 +124,7 @@ Close the game before `install`/`uninstall`.
 | `tools/PerfPatcher/` | Mono.Cecil patcher: wraps methods with timing code |
 | `tools/Verify/` | JIT-compiles every method of a DLL to compare IL errors with the original |
 | `tools/find_moo/` | finds the game installation folder (Steam libraries / GOG / `MOO_DIR`) |
+| `tools/FcpPatch/`, `tools/FixPatcher48/`, `tools/release/`, `tools/make_release.sh` | binary release: installer (.NET Framework 4.8), FixPatcher built for .NET Framework 4.8, package templates, packaging script |
 | `tools/check_tools.*` | checks .NET SDK 9+, Java 8+, FFDec (used by setup and build) |
 | `tools/scripts/` | SWF string extraction, finding method body indices from SWF XML (analysis only) |
 | `tools/ffdec/` | *(not in the repository)* put JPEXS FFDec here |
@@ -185,9 +199,19 @@ See [LICENSE.md](LICENSE.md).
 
 실험 기능: 서버·클라이언트 턴 시뮬레이션 겹치기(`moofix_overlap.txt`, [docs/02 H](docs/02_FIXES.md)).
 
+### 빌드 없이 설치 (바이너리 릴리스)
+
+1. 필요 조건: Windows 10/11, **UCP 6.4b**가 설치된 *Master of Orion: Conquer the Stars*(Steam판).
+2. [Releases](https://github.com/floyd68/MOO2016_FCP/releases)에서 `MOO2016_FCP-<버전>.zip`을 받아 아무 곳에나 풀고, 게임을 종료한 뒤 **`install.cmd`** 실행
+   (게임 폴더를 자동으로 못 찾으면 `install.cmd "D:\SteamLibrary\steamapps\common\Master of Orion"`).
+3. `uninstall.cmd`로 원래 파일 복원.
+
+그 밖에 설치할 것은 없습니다(.NET Framework 4.8은 Windows에 포함). 패키지에는 **게임·UCP 코드가 없습니다**: 게임 DLL 두 개는 빌드와 같은 Mono.Cecil 패처가 사용자 PC에서 패치하고, SWF는 바뀐 P-code만 담은 2KB 차이 파일로 만들며, 모든 결과를 릴리스에 기록된 SHA-256과 대조합니다. 빌드판 `install`과 같은 안전 검사를 합니다(UCP 6.4b 원본, 또는 UCP 6.4b `*.orig` 백업이 있는 이 패치가 아니면 아무것도 바꾸지 않음).
+패치가 적용되면 메인 메뉴의 UCP 버전 옆에 `**** FCP <버전> ****`이 표시됩니다.
+
 ### 사전 준비 (Prerequisites)
 
-빌드 전에 설치해야 하는 것들입니다.
+직접 빌드하려면 먼저 설치해야 하는 것들입니다.
 
 | # | 항목 | 버전 / 설명 | 받는 곳 |
 |---|---|---|---|
@@ -247,6 +271,7 @@ Git Bash: `./setup.sh`, `./build.sh` (`VERIFY=1`, `PERF=1`), `./install.sh`, `./
 | `tools/PerfPatcher/` | Mono.Cecil 패처: 메서드에 시간 측정 래퍼 삽입 |
 | `tools/Verify/` | 패치된 DLL을 .NET JIT로 컴파일해 IL 오류를 원본과 비교 |
 | `tools/find_moo/` | 게임 설치 폴더 찾기(Steam 라이브러리 / GOG / `MOO_DIR`) |
+| `tools/FcpPatch/`, `tools/FixPatcher48/`, `tools/release/`, `tools/make_release.sh` | 바이너리 릴리스: 설치 프로그램(.NET Framework 4.8), .NET Framework 4.8용 FixPatcher, 패키지 템플릿, 패키지 스크립트 |
 | `tools/check_tools.*` | .NET SDK 9+, Java 8+, FFDec 확인(setup과 build가 사용) |
 | `tools/scripts/` | SWF 문자열 추출, SWF→XML에서 메서드 본문 인덱스 찾기(분석용) |
 | `tools/ffdec/` | *(저장소에 없음)* JPEXS FFDec를 여기에 풀어 둠 |

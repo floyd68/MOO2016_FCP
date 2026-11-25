@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Installer of the binary release: applies the .fcpd deltas (UCP 6.4b originals -> patched files) on the user's PC.
+    Targets .NET Framework 4.8, which is part of Windows 10/11, so users need no SDK, no Java and no FFDec.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>FcpPatch</AssemblyName>
+    <LangVersion>7.3</LangVersion>
+    <Optimize>true</Optimize>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

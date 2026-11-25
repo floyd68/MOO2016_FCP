@@ -6,7 +6,7 @@ using Mono.Cecil.Rocks;
 // patch <in> <MooFix.dll> <out> <managedDir>
 var mode = args[0];
 var resolver = new DefaultAssemblyResolver();
-resolver.AddSearchDirectory(args[^1]);
+resolver.AddSearchDirectory(args[args.Length - 1]);
 
 if (mode == "publicize") {
   var a = AssemblyDefinition.ReadAssembly(args[1], new ReaderParameters { AssemblyResolver = resolver });
@@ -82,6 +82,7 @@ var hooks = new (string type, string method, string hook)[] {
   ("GameStage","SetCurrent","Pre_GameStage_SetCurrent"),
   ("HerefordGame","Update","Pre_HerefordGame_Update"),
   ("HerefordGame","OnLoadingComplete","Pre_HerefordGame_OnLoadingComplete"),
+  ("UIVersion","GetBuildString","Pre_UIVersion_GetBuildString"),
   ("SWFMovie","PumpDelayedCalls","Pre_SWFMovie_PumpDelayedCalls"),
   ("Backend.Civilizations.MajorCivilization","CheckDeficit","Pre_MajorCivilization_CheckDeficit"),
   ("Backend.Core.Universe","RunAI","Pre_Universe_RunAI"),
