@@ -20,5 +20,6 @@
     <Reference Include="Assembly-CSharp"><HintPath>$(PubDir)\Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Assembly-CSharp-firstpass"><HintPath>$(GameManaged)\Assembly-CSharp-firstpass.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine"><HintPath>$(GameManaged)\UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="LZ4s"><HintPath>$(GameManaged)\LZ4s.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 </Project>

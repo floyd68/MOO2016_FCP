@@ -134,6 +134,10 @@ Installed files: `Managed\Assembly-CSharp.dll`, `Managed\Assembly-CSharp-firstpa
 - `Documents\Master of Orion\moofix_log.txt`: load message, `EXCEPTION`, `MISMATCH`, and one line per AI pass:
   `AI RunAI <ms> | verified fast paths=… mismatches=… | PlotPath hits=… computed=… (ms) of which unreachable=… (ms)`.
 - If `Documents\Master of Orion\moofix_verify.txt` exists, verification mode is on (1 in 16 results compared with the original; slightly slower).
+- If `Documents\Master of Orion\moofix_overlap.txt` exists, the experimental overlapped turn simulation is on ([02 H](02_FIXES.md)).
+  Content `alternate` = only even turns (for comparisons). Read every turn; delete the file to turn it off.
+- Diagnostic lines: `FRAME stall <ms> (server <state>)` for every frame gap ≥ 250 ms (what the player sees as a freeze),
+  `SERVER state`, `OVERLAP`, `NOTIF`, `RADAR`, `PLANET refresh`, `STARDIST`, `DEFICIT`, `TIMELINE`.
 
 ## Profiling build (`perf`)
 
@@ -252,6 +256,8 @@ MOO_DIR='D:/Games/Steam/steamapps/common/Master of Orion' ./build.sh
 #### 런타임 로그와 검증 모드
 - `문서\Master of Orion\moofix_log.txt`: 예외, 불일치, AI 단계마다 요약 한 줄.
 - `moofix_verify.txt`가 있으면 검증 모드(16번 중 1번 원본과 비교).
+- `moofix_overlap.txt`가 있으면 턴 시뮬레이션 겹치기(실험, [02 H](02_FIXES.md)). 내용이 `alternate`면 짝수 턴만(비교용). 매 턴 다시 읽으므로 파일을 지우면 바로 꺼짐.
+- 진단 줄: `FRAME stall <ms> (server <상태>)`(250ms 이상 프레임 간격 = 플레이어가 느끼는 멈춤), `SERVER state`, `OVERLAP`, `NOTIF`, `RADAR`, `PLANET refresh`, `STARDIST`, `DEFICIT`, `TIMELINE`.
 
 #### 측정용 빌드
 - `build\perf`: 약 1,760개 메서드에 시간 측정 래퍼 + `MooPerf.dll`, SWF는 Flash 진단 버전. `install.cmd build\perf`(또는 `./install.sh build/perf`)로 설치하면 `MooPerf.dll`도 자동 복사되고, 릴리스 빌드를 설치하면 다시 삭제됩니다.

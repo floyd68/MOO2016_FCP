@@ -76,6 +76,36 @@ var hooks = new (string type, string method, string hook)[] {
   ("Backend.Civilizations.MajorCivilization","CheckDeficit","Pre_MajorCivilization_CheckDeficit"),
   ("Backend.Core.Universe","RunAI","Pre_Universe_RunAI"),
   ("Backend.Core.Universe","PlotPath","Pre_Universe_PlotPath"),
+  // planet screen: tradeable resource scope caches, partial refresh for citizen moves
+  ("Backend.Civilizations.Civilization","GetTradeableResourceCount","Pre_Civilization_GetTradeableResourceCount"),
+  ("Backend.Civilizations.Civilization","GetRawTradeableResourceProduction","Pre_Civilization_GetRawTradeableResourceProduction"),
+  ("Backend.Settlements.Colony","RunUpdateProductionWorkers","Pre_Colony_RunUpdateProductionWorkers"),
+  ("Backend.Core.Universe","DispatchMessage","Pre_Universe_DispatchMessage"),
+  // turn simulation: merged deficit advice checks (client), growth ETA scope cache, territory connected-stars memo,
+  // timeline turn data timing   (Universe.AdvanceSimulation is already hooked below)
+  ("Backend.Settlements.Colony","GetPopulationGrowthETA","Pre_Colony_GetPopulationGrowthETA"),
+  ("SpatialData","BuildTerritory","Pre_SpatialData_BuildTerritory"),
+  ("Backend.Galaxy.NavigationNode","GetConnectedStars","Pre_NavigationNode_GetConnectedStars"),
+  ("TimelineManager","GetTurnData","Pre_TimelineManager_GetTurnData"),
+  // load: star separation matrix with a faithful, faster A*
+  ("SpatialData","BuildStarsTravelDistance","Pre_SpatialData_BuildStarsTravelDistance"),
+  // scanner node detection: skip nodes that are clearly out of range (load, espionage, visibility updates)
+  ("Backend.Civilizations.Civilization","ScanNavigationNodesInRange","Pre_Civilization_ScanNavigationNodesInRange"),
+  // research screens: cache scope
+  ("SWFTechTree","SendTechTree","Pre_SWFTechTree_SendTechTree"),
+  ("SWFResearchManagement","SendResearchData","Pre_SWFResearchManagement_SendResearchData"),
+  // obsolete blueprints: availability computed at most once per colony
+  ("Backend.Settlements.Colony","UpdateObsoleteBlueprintsInProductionQueue","Pre_Colony_UpdateObsoleteBlueprintsInProductionQueue"),
+  // turn results: merged notification refreshes, debounced radar outline
+  ("VisualActionsSequencer","ProcessQueueableMessages","Pre_VisualActionsSequencer_ProcessQueueableMessages"),
+  ("SWFEmpireBottomBar","RefreshNotifications","Pre_SWFEmpireBottomBar_RefreshNotifications"),
+  ("RadarZone","RefreshAll","Pre_RadarZone_RefreshAll"),
+  // overlapped turn simulation (experimental, off unless moofix_overlap.txt exists)
+  ("Backend.Core.Universe","RunUniverseAction","Pre_Universe_RunUniverseAction"),
+  ("Backend.Core.Client","AdvanceSimulation","Pre_Client_AdvanceSimulation"),
+  ("Backend.Core.Universe","AdvanceSimulation","Pre_Universe_AdvanceSimulation"),
+  ("CheckSum","CalculateCheckSum","Pre_CheckSum_CalculateCheckSum"),
+  ("Backend.RandomEvents.RandomEvent","Create","Pre_RandomEvent_Create"),
 };
 
 int injected = 0;

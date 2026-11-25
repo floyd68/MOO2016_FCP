@@ -49,6 +49,26 @@ Cache hit rate ~11% (few repeated queries). 1,059 verified comparisons, 0 mismat
 - Bottom bar `RefreshNotifications` ~220 ms per call (mostly Flash), territory rebuild `BuildTerritoryAndDispatchChanges` ~2.8 s per turn.
 - Loading a save: the `ScanNavigationNodesInRange` path also had the O(N²) `GetEmpireSecurity` (15 s during loading) → fixed.
 
+## Screen freezes, loading and turn processing (second round)
+
+Measured with the `FRAME stall` monitor (gaps ≥ 250 ms between frames) in the regular build unless noted; same save (turn 227 → 228).
+
+| Item | Before | After | Fix |
+|---|---|---|---|
+| Freeze after a battle / an event (turn results) | 24–33 s, 17 s | ~0 (714 refreshes → 1, 12 ms) | merged notification refreshes |
+| AI stage frames | 0.55–0.7 s per frame for several seconds | one ~0.55 s rebuild per burst | debounced radar outline |
+| Blueprint screen "confirm" (obsolete blueprints) | several seconds | not measurable any more (< 2.7 s screen-load stalls only) | availability once per colony |
+| Tech tree opening | 5.0 s (238 research recomputations) | screen load only (~2.2 s) | cache scope |
+| Planet refresh after a citizen drag | 92–370 ms (profiling build) | ~63 ms | partial refresh + tradeable cache |
+| **Loading the save** (one frame) | 17.1–17.3 s | **11.5 s** (verification mode on) | scan filter, star separation A*, growth ETA cache |
+| `Universe.PostInit` (client + server) | 4.7 s | 0.93 s (profiling build) | star separation matrix |
+| **Screen freeze per turn** (simulation + new turn) | 10.1–10.3 s | **7.4 s** (verification mode on) | below |
+| Client simulation | 8.4 s | 5.96 s | merged deficit checks, territory memo, growth ETA |
+| Server simulation | 7.1 s | 5.93 s | territory memo, growth ETA |
+| Timeline turn data | serialization 0.44 s + LZ4 HC 0.47 s | LZ4 fast (35 ms for 19 MB in a bench) | fast compression |
+
+Overlapped turn simulation (experimental): same turn sequential 6.9 s + 7.6 s, overlapped 6.7 s ‖ 8.1 s → freeze ~8 s instead of ~15 s.
+
 ---
 
 ## 한국어 (Korean)
@@ -96,3 +116,23 @@ Cache hit rate ~11% (few repeated queries). 1,059 verified comparisons, 0 mismat
 - 타임라인 `default.data` 320MB, 턴당 약 2MB 증가, `PushTurn` 약 1.2초/턴.
 - 하단 바 `RefreshNotifications` 1회 약 220ms, 영역 재계산 약 2.8초/턴.
 - 세이브 로딩 중 `ScanNavigationNodesInRange` 경로의 O(N²)(15초) → 수정됨.
+
+#### 화면 멈춤, 로딩, 턴 처리 (2차)
+
+`FRAME stall` 기록(프레임 간격 250ms 이상) 기준, 따로 표시하지 않으면 일반 빌드. 같은 세이브(227 → 228턴).
+
+| 항목 | 이전 | 이후 | 수정 |
+|---|---|---|---|
+| 전투·이벤트 후 멈춤(턴 결과 연출) | 24~33초, 17초 | 거의 0 (714회 → 1회, 12ms) | 알림 갱신 합치기 |
+| AI 단계 프레임 | 프레임당 0.55~0.7초가 수 초간 | 묶음당 약 0.55초 1회 | 레이더 다시 그리기 미루기 |
+| 블루프린트 확인(구식 블루프린트) | 수 초 | 화면 불러오기 멈춤(2.7초 미만)만 남음 | 식민지당 건설 가능 목록 1회 |
+| 기술 트리 열기 | 5.0초(연구량 238회 재계산) | 화면 불러오기만(약 2.2초) | 캐시 범위 |
+| 시민 드래그 후 행성 화면 갱신 | 92~370ms(측정 빌드) | 약 63ms | 부분 갱신 + 교역 자원 캐시 |
+| **세이브 로딩**(한 프레임) | 17.1~17.3초 | **11.5초**(검증 모드 켬) | 스캔 걸러내기, 별 거리 A*, 성장 예상 턴 캐시 |
+| `Universe.PostInit`(클라이언트+서버) | 4.7초 | 0.93초(측정 빌드) | 별 거리 행렬 |
+| **턴당 화면 멈춤**(시뮬레이션 + 새 턴) | 10.1~10.3초 | **7.4초**(검증 모드 켬) | 아래 |
+| 클라이언트 시뮬레이션 | 8.4초 | 5.96초 | 적자 검사 합치기, 영토 계산 재사용, 성장 예상 턴 |
+| 서버 시뮬레이션 | 7.1초 | 5.93초 | 영토 계산 재사용, 성장 예상 턴 |
+| 타임라인 턴 데이터 | 직렬화 0.44초 + LZ4 HC 0.47초 | LZ4 빠른 압축(벤치마크 19MB에 35ms) | 빠른 압축 |
+
+턴 시뮬레이션 겹치기(실험): 같은 턴 순차 6.9초 + 7.6초, 겹치면 6.7초 ‖ 8.1초 → 멈춤 약 15초 → 약 8초.

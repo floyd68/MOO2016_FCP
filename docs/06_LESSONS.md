@@ -15,6 +15,17 @@
 - Hooking both a virtual base method and its override, then re-calling through bypass, **recurses forever**. Hook only the final override.
 - Set the bypass flag immediately before the call (so argument evaluation cannot trigger another hook first).
 - Making a private field of a MonoBehaviour public changes Unity serialization → FixPatcher refuses.
+- **Read the key type's `Equals`/`GetHashCode` before re-creating code that fills a game dictionary.** The star separation
+  cache key compares hash codes only, so different pairs collide and the original silently reuses the earlier pair's value.
+  A "compute everything, then add" version threw a duplicate-key exception that the loading code swallowed — the load never
+  finished. Mirror the original's sequential check-then-add on a private copy, then write.
+- **Verification has blind spots:** it compared newly computed values with the original A* (0 mismatches) but not the
+  surrounding effects (cache insertion). Check every side effect of the replaced code, not only its return value.
+- A heuristic that is not admissible (here: squared distance) means A* does not return shortest paths; a "better" algorithm
+  (BFS) would change AI behaviour. Faithful re-implementation, not replacement.
+- Two simulations running at the same time also share **static** state (checksum helpers, debug lists): audit statics and
+  serialize the ones that are written, and keep a fallback (the game's own out-of-sync recovery).
+- Hook a method only once: a duplicate entry in the hooks table injects two prefixes.
 
 ## UI
 - When messages are never coalesced, simply processing refreshes once per frame gives a big win.
@@ -56,6 +67,11 @@
 - 가상 메서드에 기반+파생 양쪽 prefix → **무한 재귀**. 최종 override에만.
 - bypass 플래그는 호출 직전에 세운다.
 - MonoBehaviour private 필드를 public으로 바꾸면 Unity 직렬화가 바뀜 → FixPatcher가 거부.
+- **게임 사전을 채우는 코드를 다시 만들 때는 키 형식의 `Equals`/`GetHashCode`부터 볼 것.** 별 거리 캐시 키는 해시값만 비교해서 서로 다른 쌍이 충돌하고, 원본은 앞 쌍의 값을 조용히 재사용함. "모두 계산 후 한꺼번에 추가"한 버전은 중복 키 예외가 로딩 코드에 삼켜져 로딩이 끝나지 않았음 → 원본처럼 "확인 후 추가"를 순서대로 복사본에서 재현한 뒤 기록.
+- **검증의 사각지대:** 새로 계산한 값은 원본 A*와 비교했지만(불일치 0) 주변 효과(캐시 추가)는 비교하지 않았음. 반환값뿐 아니라 교체한 코드의 모든 부수 효과를 확인할 것.
+- 허용 가능하지 않은 휴리스틱(거리 제곱)이면 A*가 최단 경로를 내지 않음. "더 나은" 알고리즘(BFS)으로 바꾸면 AI 행동이 달라짐 → 교체가 아니라 충실한 재구현.
+- 두 시뮬레이션을 동시에 돌리면 **정적(static) 상태**도 공유함(체크섬 도우미, 디버그 목록). 정적 필드를 조사해 쓰기가 있는 것은 직렬화하고, 대비책(게임 자체의 동기화 오류 복구)을 남길 것.
+- 같은 메서드는 한 번만 훅: 훅 표에 중복 항목이 있으면 prefix가 두 번 삽입됨.
 
 #### UI
 - 병합 없는 메시지 구조에서는 "프레임당 1회 처리"만으로 큰 효과.
