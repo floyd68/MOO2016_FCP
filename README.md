@@ -22,8 +22,8 @@ Unofficial — not affiliated with Wargaming, NGD Studios or the UCP author.
 | Empire Management click handling (Quick Buy, row select) | ~0.5 s per click | 8–10 ms on average |
 | Empire Management list construction (C#) | 1.3–1.7 s | ~0.1 s |
 | Freeze after a battle / an event (turn results) | 17–33 s | ~0 |
-| Loading the save | 17.1–17.3 s | ~11.5 s |
-| Screen freeze per turn (simulation + new turn) | 10.1–10.3 s | ~7.4 s (more with the experimental overlap) |
+| Loading the save | 17.1–17.3 s | ~10.6–11.1 s |
+| Screen freeze per turn (simulation + new turn) | 10.1–10.3 s | ~7.2 s (more with the experimental overlap) |
 | Tech tree opening, blueprint "confirm" | 5 s, several s | screen load only (~2 s) |
 
 Experimental: overlapping the server and client turn simulations (`moofix_overlap.txt`, see [docs/02 H](docs/02_FIXES.md)).
@@ -168,8 +168,8 @@ See [LICENSE.md](LICENSE.md).
 | 제국 관리 클릭 처리(Quick Buy, 행 선택) | 클릭당 약 0.5초 | 평균 8~10ms |
 | 제국 관리 목록 생성(C#) | 1.3~1.7초 | 약 0.1초 |
 | 전투·이벤트 후 멈춤(턴 결과 연출) | 17~33초 | 거의 0 |
-| 세이브 로딩 | 17.1~17.3초 | 약 11.5초 |
-| 턴당 화면 멈춤(시뮬레이션 + 새 턴) | 10.1~10.3초 | 약 7.4초(실험 기능인 겹치기를 켜면 더 짧음) |
+| 세이브 로딩 | 17.1~17.3초 | 약 10.6~11.1초 |
+| 턴당 화면 멈춤(시뮬레이션 + 새 턴) | 10.1~10.3초 | 약 7.2초(실험 기능인 겹치기를 켜면 더 짧음) |
 | 기술 트리 열기, 블루프린트 확인 | 5초, 수 초 | 화면 불러오기만(약 2초) |
 
 실험 기능: 서버·클라이언트 턴 시뮬레이션 겹치기(`moofix_overlap.txt`, [docs/02 H](docs/02_FIXES.md)).
