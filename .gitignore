@@ -11,3 +11,21 @@ tools/ffdec/
 *.exe
 *.orig
 *.jar
+# Workshop preview image (contains the game logo)
+tools/workshop/preview.jpg
+# SteamCMD (if unpacked into tools/): cached login, config and logs must never be committed
+dumps/
+tools/appcache/
+tools/config/
+tools/logs/
+tools/package/
+tools/public/
+tools/siteserverui/
+tools/steamapps/
+tools/userdata/
+tools/*.vdf
+tools/steamcmd*
+tools/crashhandler*
+tools/*.old
+tools/*.delete
+tools/workshopbuilds/

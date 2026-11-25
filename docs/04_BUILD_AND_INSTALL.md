@@ -178,6 +178,15 @@ On the user's PC `install.cmd` → `find_moo.cmd` → `FcpPatch install`: the sa
 (recompressed; the manifest stores the hash of the decompressed SWF). Any mismatch → nothing is written.
 A binary delta was not used for the DLLs: Cecil rewrites the metadata layout, so ~87 % of such a delta would be the game's own code.
 
+### Steam Workshop
+
+`make_release.sh` also writes `build/workshop/` (content = the release folder, `preview.jpg` from the local
+`tools/workshop/preview.jpg`, `description.txt` from `tools/workshop/description.bbcode`, `workshop_item.vdf`).
+Upload / update with `steamcmd +login <account> +workshop_build_item "<path>\build\workshop\workshop_item.vdf" +quit`.
+The item number is in `tools/workshop/publishedfileid.txt` (Workshop item 3845815644); `WORKSHOP_VISIBILITY=0|1|2` sets the
+visibility (public / friends / private), otherwise an update keeps it. SteamCMD reads the file without escape sequences, so the
+description must not contain double quotes (the script checks this). Each update replaces the Workshop description with the file.
+
 ## When UCP or the game is updated
 
 1. The build stops at the hash check. Update the hashes in `tools/BuildHelper/Program.cs` (`Originals`) after confirming the new files.
@@ -293,6 +302,12 @@ MOO_DIR='D:/Games/Steam/steamapps/common/Master of Orion' ./build.sh
 
 사용자 PC에서는 `install.cmd` → `find_moo.cmd` → `FcpPatch install`: `BuildHelper prepare-target`과 같은 검사 후, DLL 두 개는 `FixPatcher.exe patch`(Cecil 출력은 결정적: 빌드와 바이트 동일), SWF는 차이 파일 적용(다시 압축, 매니페스트에는 압축을 푼 SWF의 해시). 하나라도 다르면 아무것도 쓰지 않습니다.
 DLL에 바이너리 차이를 쓰지 않은 이유: Cecil이 메타데이터 배치를 다시 쓰므로 차이 파일의 약 87%가 게임 코드가 됨.
+
+##### Steam 창작마당
+
+`make_release.sh`는 `build/workshop/`도 만듭니다(내용 = 릴리스 폴더, 로컬 `tools/workshop/preview.jpg`의 미리보기, `tools/workshop/description.bbcode`의 설명문, `workshop_item.vdf`).
+업로드·업데이트: `steamcmd +login <계정> +workshop_build_item "<경로>\build\workshop\workshop_item.vdf" +quit`.
+아이템 번호는 `tools/workshop/publishedfileid.txt`(창작마당 아이템 3845815644). `WORKSHOP_VISIBILITY=0|1|2`로 공개 범위(공개/친구/비공개)를 지정하고, 지정하지 않으면 업데이트 때 유지됩니다. SteamCMD는 이스케이프 없이 읽으므로 설명문에 큰따옴표를 쓸 수 없습니다(스크립트가 검사). 업데이트할 때마다 창작마당 설명이 파일 내용으로 바뀝니다.
 
 #### UCP/게임이 업데이트되었을 때
 1. 해시 검사에서 빌드가 멈춤 → 새 파일을 확인한 뒤 `tools/BuildHelper/Program.cs`의 `Originals` 해시를 갱신.

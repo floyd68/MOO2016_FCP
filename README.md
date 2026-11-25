@@ -39,7 +39,9 @@ Details: [docs/03_MEASUREMENTS.md](docs/03_MEASUREMENTS.md)
 ## Install without building (binary release)
 
 1. Requirements: Windows 10/11, *Master of Orion: Conquer the Stars* (Steam) with **UCP 6.4b** installed.
-2. Download `MOO2016_FCP-<version>.zip` from [Releases](https://github.com/floyd68/MOO2016_FCP/releases), extract it anywhere, close the game and run **`install.cmd`**
+2. Download `MOO2016_FCP-<version>.zip` from [Releases](https://github.com/floyd68/MOO2016_FCP/releases) and extract it anywhere,
+   **or** subscribe on the [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3845815644) (files arrive in `Steam\steamapps\workshop\content\298050\3845815644\`).
+   Close the game and run **`install.cmd`**
    (or `install.cmd "D:\SteamLibrary\steamapps\common\Master of Orion"` if the folder is not found automatically).
 3. `uninstall.cmd` restores the original files.
 
@@ -202,7 +204,9 @@ See [LICENSE.md](LICENSE.md).
 ### 빌드 없이 설치 (바이너리 릴리스)
 
 1. 필요 조건: Windows 10/11, **UCP 6.4b**가 설치된 *Master of Orion: Conquer the Stars*(Steam판).
-2. [Releases](https://github.com/floyd68/MOO2016_FCP/releases)에서 `MOO2016_FCP-<버전>.zip`을 받아 아무 곳에나 풀고, 게임을 종료한 뒤 **`install.cmd`** 실행
+2. [Releases](https://github.com/floyd68/MOO2016_FCP/releases)에서 `MOO2016_FCP-<버전>.zip`을 받아 아무 곳에나 풀거나,
+   [Steam 창작마당](https://steamcommunity.com/sharedfiles/filedetails/?id=3845815644)에서 구독(파일은 `Steam\steamapps\workshop\content\298050\3845815644\`에 내려옴).
+   게임을 종료한 뒤 **`install.cmd`** 실행
    (게임 폴더를 자동으로 못 찾으면 `install.cmd "D:\SteamLibrary\steamapps\common\Master of Orion"`).
 3. `uninstall.cmd`로 원래 파일 복원.
 

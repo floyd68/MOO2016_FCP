@@ -1,0 +1,90 @@
+[h1]Fast Code Patch (FCP) {VERSION}[/h1]
+[b]Playing Master of Orion, don't be afraid to press a button anymore — almost all of the annoying lags are drastically reduced![/b]
+[b]Master of Orion을 플레이 하다 더 이상 버튼 누를때 겁먹지 마세요. 거의 모든 짜증나는 랙들을 획기적으로 줄였습니다![/b]
+
+A late-game performance patch on top of the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=1109736522]Unofficial Code Patch (UCP) 6.4b[/url]. Game results are not changed: every simulation-side change produces identical values (verified in play against the original code).
+
+[h2]Results (Massive galaxy, ~345 colonies, turn 227)[/h2]
+[table]
+[tr][th]Item[/th][th]Before[/th][th]After[/th][/tr]
+[tr][td]Loading a save[/td][td]17 s[/td][td]~9 s (+~5 s shader warm-up)[/td][/tr]
+[tr][td]Screen freeze per turn[/td][td]10 s[/td][td]~5 s[/td][/tr]
+[tr][td]Freeze after a battle / event[/td][td]17–33 s[/td][td]~0[/td][/tr]
+[tr][td]Empire Management first opening[/td][td]5–7 s[/td][td]< 1 s[/td][/tr]
+[tr][td]Empire Management mouse over / clicks[/td][td]0.3–0.5 s[/td][td]~10 ms[/td][/tr]
+[tr][td]Citizen drag & drop on the planet screen[/td][td]0.7–1.4 s[/td][td]instant[/td][/tr]
+[tr][td]Tech tree, blueprint confirm, espionage, races[/td][td]2–5 s[/td][td]screen load only / no stall[/td][/tr]
+[/table]
+Also: the Empire Management list keeps its sort, selection and scroll position after visiting a planet.
+
+[h2]Requirements[/h2]
+[list]
+[*]Windows 10/11, Steam version of Master of Orion: Conquer the Stars
+[*][b]UCP 6.4b installed first[/b] ([url=https://steamcommunity.com/sharedfiles/filedetails/?id=1109736522]Workshop[/url])
+[/list]
+
+[h2]Install[/h2]
+Subscribing alone does [b]not[/b] change the game. After subscribing:
+[olist]
+[*]Close the game.
+[*]Open [i]Steam\steamapps\workshop\content\298050\<this item's number>\[/i] (Steam: game properties → Installed files → Browse, then go up to [i]steamapps\workshop\content\298050[/i]).
+[*]Run [b]install.cmd[/b]. It finds the game folder, checks that the game files are the UCP 6.4b originals (otherwise it changes nothing) and creates *.orig backups.
+[/olist]
+[b]After an update of this item, run install.cmd again.[/b] The main menu shows **** FCP <version> **** next to the UCP version when the patch is active.
+
+[h2]Uninstall[/h2]
+Run [b]uninstall.cmd[/b] (restores the backups). Steam [i]Verify integrity of game files[/i] also restores the game, but then UCP must be installed again.
+
+[h2]Notes[/h2]
+[list]
+[*]No game or UCP code is included: the patch is applied on your PC to your own files, and every result is checked against the checksums of the release.
+[*]Not a data mod: it appears in the in-game mod list but contains no YAML, so enabling/disabling it there does nothing.
+[*]Options (files in Documents\Master of Orion): moofix_warmup_off.txt = shorter loading without shader warm-up; moofix_overlap.txt = experimental overlapped turn simulation.
+[*]Tested in single player.
+[/list]
+Source, measurements and build instructions (MIT): [url=https://github.com/floyd68/MOO2016_FCP]github.com/floyd68/MOO2016_FCP[/url]
+Unofficial — not affiliated with Wargaming, NGD Studios or the UCP author.
+
+[h1]한국어[/h1]
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=1109736522]Unofficial Code Patch(UCP) 6.4b[/url] 위에서 동작하는 후반부 성능 패치입니다. 게임 결과는 바뀌지 않습니다(시뮬레이션 쪽 변경은 모두 같은 값을 내도록 만들고, 실제 플레이에서 원본과 대조해 검증).
+
+[h2]결과 (Massive 은하, 식민지 약 345개, 227턴)[/h2]
+[table]
+[tr][th]항목[/th][th]이전[/th][th]이후[/th][/tr]
+[tr][td]세이브 로딩[/td][td]17초[/td][td]약 9초(+셰이더 미리 컴파일 약 5초)[/td][/tr]
+[tr][td]턴당 화면 멈춤[/td][td]10초[/td][td]약 5초[/td][/tr]
+[tr][td]전투·이벤트 후 멈춤[/td][td]17~33초[/td][td]거의 0[/td][/tr]
+[tr][td]제국 관리 첫 진입[/td][td]5~7초[/td][td]1초 미만[/td][/tr]
+[tr][td]제국 관리 마우스·클릭 반응[/td][td]0.3~0.5초[/td][td]약 10ms[/td][/tr]
+[tr][td]행성 화면 시민 드래그&드롭[/td][td]0.7~1.4초[/td][td]즉시[/td][/tr]
+[tr][td]기술 트리, 블루프린트 확인, 첩보, 종족[/td][td]2~5초[/td][td]화면 불러오기만 / 멈춤 없음[/td][/tr]
+[/table]
+행성 화면에 다녀와도 제국 관리 목록의 정렬·선택·스크롤 위치가 유지됩니다.
+
+[h2]필요 조건[/h2]
+[list]
+[*]Windows 10/11, Master of Orion: Conquer the Stars Steam판
+[*][b]UCP 6.4b 먼저 설치[/b] ([url=https://steamcommunity.com/sharedfiles/filedetails/?id=1109736522]창작마당[/url])
+[/list]
+
+[h2]설치[/h2]
+구독만으로는 게임이 바뀌지 [b]않습니다[/b]. 구독한 뒤:
+[olist]
+[*]게임을 종료합니다.
+[*][i]Steam\steamapps\workshop\content\298050\<이 아이템 번호>\[/i] 폴더를 엽니다(Steam: 게임 속성 → 설치된 파일 → 찾아보기 후 [i]steamapps\workshop\content\298050[/i]으로 이동).
+[*][b]install.cmd[/b]를 실행합니다. 게임 폴더를 찾고, 게임 파일이 UCP 6.4b 원본인지 확인한 뒤(아니면 아무것도 바꾸지 않음) *.orig 백업을 만듭니다.
+[/olist]
+[b]이 아이템이 업데이트되면 install.cmd를 다시 실행하세요.[/b] 패치가 적용되면 메인 메뉴의 UCP 버전 옆에 **** FCP <버전> ****이 표시됩니다.
+
+[h2]제거[/h2]
+[b]uninstall.cmd[/b] 실행(백업 복원). Steam [i]게임 파일 무결성 확인[/i]으로도 복원되지만 그 경우 UCP를 다시 설치해야 합니다.
+
+[h2]참고[/h2]
+[list]
+[*]게임·UCP 코드는 들어 있지 않습니다. 패치는 사용자 PC에서 사용자의 파일에 적용되고, 모든 결과를 릴리스 체크섬과 대조합니다.
+[*]데이터 모드가 아닙니다: 게임의 모드 목록에 보이지만 YAML이 없어 거기서 켜고 끄는 것은 영향이 없습니다.
+[*]옵션(문서\Master of Orion 폴더의 파일): moofix_warmup_off.txt = 셰이더 미리 컴파일 없이 짧은 로딩, moofix_overlap.txt = 실험 기능인 턴 시뮬레이션 겹치기.
+[*]싱글플레이에서 시험했습니다.
+[/list]
+소스, 측정 기록, 빌드 방법(MIT): [url=https://github.com/floyd68/MOO2016_FCP]github.com/floyd68/MOO2016_FCP[/url]
+비공식 패치이며 Wargaming, NGD Studios, UCP 제작자와 무관합니다.

@@ -1,5 +1,6 @@
 MOO2016_FCP {VERSION} - late-game performance patch for Master of Orion: Conquer the Stars (2016)
 https://github.com/floyd68/MOO2016_FCP
+Steam Workshop: https://steamcommunity.com/sharedfiles/filedetails/?id=3845815644
 
 Playing Master of Orion, don't be afraid to press a button anymore - almost all of the annoying lags are drastically reduced!
 

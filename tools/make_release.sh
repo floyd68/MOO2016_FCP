@@ -38,3 +38,28 @@ cp LICENSE.md "$D/"
 ( cd "$B/dist" && powershell.exe -NoProfile -Command "Compress-Archive -Path 'MOO2016_FCP-$VER' -DestinationPath 'MOO2016_FCP-$VER.zip' -Force" )
 echo "== $D.zip"
 ls -la "$D/files"
+
+# ---- Steam Workshop upload folder (build/workshop): content = the release folder, preview, description, SteamCMD item file
+W="$B/workshop"; rm -rf "$W"; mkdir -p "$W"
+cp -r "$D" "$W/content"
+PREVIEW="$ROOT/tools/workshop/preview.jpg"           # local only (contains the game logo; not in the repository)
+if [ -f "$PREVIEW" ]; then cp "$PREVIEW" "$W/preview.jpg"; else echo "WARNING: $PREVIEW not found (Workshop preview image, <= 1 MB)"; fi
+sed "s/{VERSION}/$VER/g" tools/workshop/description.bbcode > "$W/description.txt"
+ID=0; [ -f tools/workshop/publishedfileid.txt ] && ID=$(tr -dc '0-9' < tools/workshop/publishedfileid.txt)
+# SteamCMD reads the item file without escape sequences: values are written as they are, so they must not contain '"'
+if grep -q '"' "$W/description.txt"; then echo 'ERROR: tools/workshop/description.bbcode must not contain double quotes (SteamCMD cannot escape them)'; exit 1; fi
+{
+  echo '"workshopitem"'
+  echo '{'
+  echo '  "appid" "298050"'
+  echo "  \"publishedfileid\" \"$ID\""
+  echo "  \"contentfolder\" \"$(cygpath -w "$W/content")\""
+  echo "  \"previewfile\" \"$(cygpath -w "$W/preview.jpg")\""
+  echo '  "title" "Fast Code Patch (FCP) - late-game performance patch"'
+  echo "  \"description\" \"$(cat "$W/description.txt")\""
+  echo "  \"changenote\" \"$VER\""
+  # first upload: private (check it first); WORKSHOP_VISIBILITY=0 (public) / 1 (friends) / 2 (private) sets it explicitly
+  if [ -n "${WORKSHOP_VISIBILITY:-}" ]; then echo "  \"visibility\" \"$WORKSHOP_VISIBILITY\""; elif [ "$ID" = 0 ]; then echo '  "visibility" "2"'; fi
+  echo '}'
+} > "$W/workshop_item.vdf"
+echo "== $W (SteamCMD: steamcmd +login <account> +workshop_build_item \"$(cygpath -w "$W/workshop_item.vdf")\" +quit)"
