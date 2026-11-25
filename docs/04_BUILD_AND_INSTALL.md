@@ -95,8 +95,8 @@ Steps performed:
 4. `FixPatcher patch` — (a) make public only the private members MooFix actually references (refuses MonoBehaviour fields: Unity serialization would change),
    (b) inject the prefixes from the `hooks` table. The same command is run on firstpass (types not present in that module are skipped).
 5. FFDec exports the P-code of `ngd.ColonyWindow`, `ngd.ASRoot`, `fl.controls.ScrollBar` from the original SWF, `BuildHelper apply`
-   applies `swf\patches\*.diff` to the original method bodies (`build\pcode`), and FFDec `-replace` swaps 7 method bodies
-   ([05](05_SWF_PATCHING.md)); the script reports "method bodies replaced: 7".
+   applies `swf\patches\*.diff` to the original method bodies (`build\pcode`), and FFDec `-replace` swaps 12 method bodies
+   ([05](05_SWF_PATCHING.md)); the script reports "method bodies replaced: 12".
 6. `perf`: PerfPatcher profiling build / `verify`: JIT comparison (`identical to original` expected for both DLLs).
 
 Tested: a clean copy containing only the repository files (no `_local_only`, FFDec in `tools\ffdec`, located in a folder whose path
@@ -140,6 +140,10 @@ Installed files: `Managed\Assembly-CSharp.dll`, `Managed\Assembly-CSharp-firstpa
   (what the player sees as a freeze; during loading and turn processing also scan statistics), `SERVER state`, `OVERLAP`,
   `NOTIF`, `RADAR`, `PLANET refresh`, `STARDIST`, `DEFICIT`, `TIMELINE`, `SECURITY` (security / settlement value reuse per
   simulation), `FLASH` (first construction of the Empire Management rows), `EMLIST` (Empire Management list state saved/restored).
+- Shaders are compiled at the end of loading (~5 s longer loading, `WARMUP all shaders` line); create
+  `Documents\Master of Orion\moofix_warmup_off.txt` to turn this off.
+- Screen-opening diagnostics (only slow cases are logged): `MOVIE read/create/advance`, `STAGE switch`, `SWFCALL` (C# → Flash calls
+  queued until a movie was ready), and `FRAME stall … | before update …, update …` (frame split).
 - Profiling builds additionally print `ALLOC` blocks (allocated MB per method, self, approximate, and the collections inside);
   turn off the overlap while measuring allocations.
 
@@ -240,7 +244,7 @@ MOO_DIR='D:/Games/Steam/steamapps/common/Master of Orion' ./build.sh
 | `build.cmd perf` | `PERF=1 ./build.sh` | + 측정용 빌드 `build\perf` |
 
 경로 변경: `MOO_DIR`(위 게임 폴더 참고), `ORIG_MANAGED`, `ORIG_SWF`, `GAME_MANAGED`, `FFDEC_JAR` (CMD는 `set "변수=값"` 후 실행).
-순서: 준비물 확인 → 도구 빌드 → 원본 선택·해시 확인(`build\orig`) → `publicize`(컴파일 전용 참조 DLL) → MooFix 빌드 → `patch`(MooFix가 쓰는 private 멤버만 public, prefix 삽입; MonoBehaviour 필드는 거부) → 원본 SWF에서 P-code 내보내기 + `swf\patches\*.diff` 적용 → FFDec로 SWF 본문 7개 교체 → (perf) 측정 빌드 / (verify) JIT 비교.
+순서: 준비물 확인 → 도구 빌드 → 원본 선택·해시 확인(`build\orig`) → `publicize`(컴파일 전용 참조 DLL) → MooFix 빌드 → `patch`(MooFix가 쓰는 private 멤버만 public, prefix 삽입; MonoBehaviour 필드는 거부) → 원본 SWF에서 P-code 내보내기 + `swf\patches\*.diff` 적용 → FFDec로 SWF 본문 12개 교체 → (perf) 측정 빌드 / (verify) JIT 비교.
 시험 결과: 저장소 파일만 있는 깨끗한 사본(`_local_only` 없음, FFDec는 `tools\ffdec`, 경로에 공백과 `(x86)` 포함)을 일반 Windows PATH(System32+dotnet+Java)에서 `build.cmd verify perf`로, Git Bash에서 `build.sh`로 빌드한 결과가 설치본과 바이트 단위로 같았습니다(perf 빌드도 이전 perf 빌드와 동일). FFDec 없음, Java 없음, 원본이 아닌 SWF는 오류로 멈춥니다.
 
 #### 설치 / 제거
@@ -262,6 +266,8 @@ MOO_DIR='D:/Games/Steam/steamapps/common/Master of Orion' ./build.sh
 - `moofix_verify.txt`가 있으면 검증 모드(16번 중 1번 원본과 비교).
 - `moofix_overlap.txt`가 있으면 턴 시뮬레이션 겹치기(실험, [02 H](02_FIXES.md)). 내용이 `alternate`면 짝수 턴만(비교용). 매 턴 다시 읽으므로 파일을 지우면 바로 꺼짐.
 - 진단 줄: `FRAME stall <ms> (server <상태>) | GC <n>x since last frame, heap <MB>`(250ms 이상 프레임 간격 = 플레이어가 느끼는 멈춤, 로딩·턴 처리 때는 스캔 통계 포함), `SERVER state`, `OVERLAP`, `NOTIF`, `RADAR`, `PLANET refresh`, `STARDIST`, `DEFICIT`, `TIMELINE`, `SECURITY`(시뮬레이션별 보안·정착지 값 재사용), `FLASH`(제국 관리 행 첫 생성), `EMLIST`(제국 관리 목록 상태 저장·복원).
+- 로딩 끝에 셰이더를 미리 컴파일(로딩 약 5초 증가, `WARMUP all shaders` 줄). 끄려면 `문서\Master of Orion\moofix_warmup_off.txt`를 만들 것.
+- 화면 열기 진단(느린 경우만 기록): `MOVIE read/create/advance`, `STAGE switch`, `SWFCALL`(무비 준비 전까지 대기한 C# → Flash 호출), `FRAME stall … | before update …, update …`(프레임 구간 분리).
 - 측정용 빌드는 `ALLOC` 블록(메서드별 할당 MB, 자기 몫, 근사값, 그 안의 GC 횟수)도 출력. 할당량을 잴 때는 겹치기를 끌 것.
 
 #### 측정용 빌드

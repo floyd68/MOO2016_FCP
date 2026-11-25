@@ -64,6 +64,10 @@ foreach (var t in mod.GetTypes()) {
         (t.Namespace == "AI" || t.Namespace == "Backend.Diplomacy" || t.Namespace == "Backend.Research" || t.Namespace == "Backend.Espionage" || t.Namespace == "Backend.Leaders" ||
          new[]{"Colony","Settlement","Civilization","MajorCivilization","Universe","Planet","Star","Fleet","ProductionGrid","KnownNodeData","KnownColonyData","KnownPlanetData","KnownSettlementData","NodeDevelopment","CelestialBody","NavigationNode","TimelineManager","CheckSum"}.Contains(t.Name)))
       want = true;
+    // screen code: every non-trivial method of the C# side of the screens (opening a screen fills it from C#)
+    if (!want && m.Body.Instructions.Count > 30 && !m.Name.StartsWith("<") && !t.Name.StartsWith("<") &&
+        (t.Name.StartsWith("SWF") || t.Name.StartsWith("UIState") || t.Name.StartsWith("UUIState") || t.Name.StartsWith("Stage")))
+      want = true;
     if (!want) continue;
     Wrap(m, $"{t.Name}.{m.Name}({m.Parameters.Count})", t.FullName == "Scaleform.Movie" && !m.IsStatic);
     count++;

@@ -50,6 +50,20 @@
   returned 0 (`numChildren` = 0, so nothing was found). Read each type with its own getter.
 - Opening a planet from Empire Management does not close it: the planet screen is pushed on top and the list is refilled when
   the screen is presented again. Restore UI state in `OnPresented`, after the refill — not when the list data is loaded.
+- **Hidden objects are not free in Scaleform.** 356 row widgets with `visible = false` still cost ~3 s in the frame after they
+  were created (their first frame runs), on top of 1.5 s construction: the number of widgets was the cost, not their drawing.
+  Virtualizing the list (widgets only for visible rows, reused) removed both.
+- **Scaleform shape bounds overflow:** a transparent rectangle 33,546 px high was measured as 52,428.8 px (= 2^20 twips), and
+  the container height grew further with every widget. Use a 1×1 px object positioned at the bottom to define the height.
+- `DisplayObject.height` and `ScrollPane.update()` include invisible children; widgets parked off-screen keep influencing the
+  scroll range unless they stay inside it.
+- Measure screen opening in steps before optimizing: file read, native movie creation (both a few ms here), C# → Flash calls
+  queued until the movie is ready (they run inside its first frame), first `Advance`, 3D stage switch, rendering. Pre-caching
+  movies, the obvious idea, would have saved only milliseconds.
+- First-display stalls outside any C# code were shader compilation: `Shader.WarmupAllShaders()` at the end of loading removed
+  them, at the price of ~5 s loading — a trade-off, so it can be turned off.
+- A recursive "relax and re-expand" search (label correcting DFS) can be replaced by Dijkstra when only its fixed point is used
+  and edge costs are non-negative integers (exact float sums).
 
 ## Tools
 - FFDec's AS3 recompilation can change runtime behavior even when the decompiled source looks identical → only replace method bodies with P-code.
@@ -104,6 +118,12 @@
 - 행을 숨길 때 스크롤 높이 계산 시점 확인(`Fill()`, 모든 행이 visible일 때).
 - Scaleform `Value`의 숫자는 `VT_Int`, `VT_UInt`, `VT_Number`로 옴. int 값을 암묵적 `double` 변환으로 읽으면 0이 됨(`numChildren` = 0 → 아무것도 못 찾음). 형식마다 맞는 getter로 읽을 것.
 - 제국 관리에서 행성을 열어도 화면은 닫히지 않음: 행성 화면이 위에 쌓이고, 다시 표시될 때 목록을 새로 채움 → UI 상태 복원은 목록 데이터를 불러올 때가 아니라 다시 채운 뒤 `OnPresented`에서.
+- **Scaleform에서 숨긴 객체도 공짜가 아니다.** `visible = false`인 행 위젯 356개도 생성 다음 프레임에 약 3초가 들었음(첫 프레임 실행). 생성 1.5초와 합쳐, 비용은 그리기가 아니라 위젯 수였음 → 목록 가상화(보이는 행만, 재사용)로 둘 다 제거.
+- **Scaleform 도형 경계 오버플로:** 높이 33,546px 투명 사각형이 52,428.8px(= 2^20 트윕)로 측정되고, 위젯마다 컨테이너 높이가 더 커짐 → 높이는 맨 아래에 둔 1×1px 객체로 정할 것.
+- `DisplayObject.height`와 `ScrollPane.update()`는 보이지 않는 자식도 포함함. 화면 밖에 둔 위젯도 범위 안에 있지 않으면 스크롤 범위를 바꿈.
+- 화면 열기는 단계별로 먼저 잴 것: 파일 읽기, 네이티브 무비 생성(여기서는 둘 다 수 ms), 무비 준비 전까지 대기한 C# → Flash 호출(첫 프레임 안에서 실행), 첫 `Advance`, 3D 스테이지 전환, 렌더링. 당연해 보이던 "무비 미리 불러오기"는 ms 단위 이득뿐이었음.
+- C# 밖에서 생기던 첫 표시 멈춤은 셰이더 컴파일이었음: 로딩 끝 `Shader.WarmupAllShaders()`로 사라졌지만 로딩이 약 5초 늘어남 → 맞바꿈이라 끌 수 있게 함.
+- 재귀 "완화 후 재확장" 탐색(label correcting DFS)은 고정점만 쓰이고 간선 비용이 0 이상의 정수면(실수 합이 정확) 다익스트라로 바꿀 수 있음.
 
 #### 도구
 - FFDec AS3 재컴파일은 소스가 같아 보여도 동작이 달라질 수 있음 → 메서드 본문 P-code 교체만.

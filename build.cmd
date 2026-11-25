@@ -100,12 +100,12 @@ set "FAILLOG="
 dotnet "!HELP!" apply "!B!\pcode_export" "!ROOT!\swf\patches" "!S!" || goto :fail
 if exist "!B!\release\EmpireManagement.swf" del "!B!\release\EmpireManagement.swf"
 set "FAILLOG=!B!\ffdec_release.log"
-java -jar "!FFDEC_JAR!" -replace "!ORIG_SWF!" "!B!\release\EmpireManagement.swf" ngd.ColonyWindow "!S!\ctor.pcode" 712 ngd.ColonyWindow "!S!\fill.pcode" 718 ngd.ColonyWindow "!S!\adj.pcode" 1236 ngd.ColonyWindow "!S!\buy.pcode" 1237 ngd.ASRoot "!S!\scroll.pcode" 979 fl.controls.ScrollBar "!S!\sb_press.pcode" 818 fl.controls.ScrollBar "!S!\sb_release.pcode" 820 > "!FAILLOG!" 2>&1
+java -jar "!FFDEC_JAR!" -replace "!ORIG_SWF!" "!B!\release\EmpireManagement.swf" ngd.ColonyWindow "!S!\ctor.pcode" 712 ngd.ColonyWindow "!S!\fill.pcode" 718 ngd.ColonyWindow "!S!\adj.pcode" 1236 ngd.ColonyWindow "!S!\buy.pcode" 1237 ngd.ColonyWindow "!S!\reset.pcode" 713 ngd.ColonyWindow "!S!\select.pcode" 719 ngd.ColonyWindow "!S!\update.pcode" 720 ngd.ColonyWindow "!S!\position.pcode" 721 ngd.ColonyWindow "!S!\clear.pcode" 722 ngd.ASRoot "!S!\scroll.pcode" 979 fl.controls.ScrollBar "!S!\sb_press.pcode" 818 fl.controls.ScrollBar "!S!\sb_release.pcode" 820 > "!FAILLOG!" 2>&1
 if not exist "!B!\release\EmpireManagement.swf" (echo ERROR: FFDec did not write the patched SWF. & goto :fail)
 set "NREP=0"
 for /f "delims=" %%l in ('type "!B!\ffdec_release.log"') do echo %%l | "!SYS!\findstr.exe" /c:"Replace AS3 PCode" >nul && set /a NREP+=1
-echo   method bodies replaced: !NREP! ^(expected 7^)
-if not "!NREP!"=="7" (echo ERROR: expected 7 replaced method bodies. & goto :fail)
+echo   method bodies replaced: !NREP! ^(expected 12^)
+if not "!NREP!"=="12" (echo ERROR: expected 12 replaced method bodies. & goto :fail)
 set "FAILLOG="
 
 if "!DO_PERF!"=="1" (

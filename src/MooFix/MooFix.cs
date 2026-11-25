@@ -1485,7 +1485,8 @@ public static class MooFix
     // (published by the patched FillList as widgetContainer.name = "mfsort|<filter>|<direction>"), the selected colony
     // and the scroll position are read from the movie; when the screen is opened again, after its colony list has been
     // filled, they are re-applied through the screen's own paths: header button clicks (same as the player clicking
-    // the header), OnColonySelected of the colony's row, then the scroll position.
+    // the header), the selection through the list's selectedColonyID setter (the list is virtualized: the row may have
+    // no widget), then the scroll position.
     sealed class EmState { public Colony colony; public double scroll; public string filter, dir; }
     static EmState emSaved;
     static SWFEmpireManagement emSavedFrom, emTarget;
@@ -1629,18 +1630,10 @@ public static class MooFix
         Civilization civ = Client.GetUniverse().GetLocalPlayerCivilization();
         int idx = civ != null && st.colony != null ? civ.Colonies.IndexOf(st.colony) : -1;
         if (idx >= 0)
-        {
-            Scaleform.Value content = Mem(sp, "content");
-            double cd;
-            int cnt = Num(Mem(content, "numChildren"), out cd) ? (int)cd : 0;
-            for (int i = 0; i < cnt; i++)
-            {
-                Scaleform.Value w = content.Invoke("getChildAt", i);
-                double ci;
-                if (!Num(Mem(w, "colonyIndex"), out ci) || (int)ci != idx) continue;
-                w.Invoke("OnColonySelected", em.CreateObject("flash.events.MouseEvent", "click"));
-                break;
-            }
+        {   // the list keeps widgets only for visible rows: select by colony index; the list lays itself out
+            // around the selected row on its next frame. OnColonySelected keeps the C# side in sync, as a click would.
+            cw.SetMember("selectedColonyID", idx);
+            try { em.OnColonySelected(idx); } catch (Exception e) { LogEx("empire list select", e); }
         }
         sp.SetMember("verticalScrollPosition", st.scroll);
         double now; bool hasNow = Num(Mem(sp, "verticalScrollPosition"), out now);
@@ -1772,6 +1765,202 @@ public static class MooFix
     static int f1HitTrue;
     static readonly long RestTicks = System.Diagnostics.Stopwatch.Frequency * 12 / 100; // 120 ms
     static readonly long ThrottleTicks = System.Diagnostics.Stopwatch.Frequency * 2; // reuse up to 2 s while the mouse is moving
+
+    // ---- FleetHelper.GetETAToAll (Known Planets screen: ETA from the capital to every known planet). The original is a
+    // recursive depth-first search that re-expands a node every time it finds a cheaper cost (label correcting), calling
+    // Fleet.CalcJumpETA again for the same edges: 1.35 s when the screen opens. Its fixed point is the shortest cost to
+    // every reached node (edge costs are non-negative integers, so the float sums are exact in any order); Dijkstra gives
+    // the same dictionary with one CalcJumpETA per expanded edge. Same expansion rule: a node is expanded only if it is
+    // the start or not a planet, was discovered by civ, and is not an anomaly; unexpanded nodes still get their cost.
+    // Only the filter-less call is replaced (the only caller).
+    public static bool Pre_FleetHelper_GetETAToAll(Civilization civ, float travelSpeed, NavigationNode fromNode, FleetHelper.FilterPossibleDestination filter, out Dictionary<NavigationNode, float> result)
+    {
+        result = null;
+        if (Bypassed() || filter != null || civ == null || fromNode == null) return false;
+        try
+        {
+            long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+            var r = new Dictionary<NavigationNode, float>();
+            if (travelSpeed <= 0f) { result = r; return true; }
+            var heapN = new List<NavigationNode>(); var heapC = new List<float>();
+            r.Add(fromNode, 0f);
+            HeapPush(heapN, heapC, fromNode, 0f);
+            while (heapN.Count > 0)
+            {
+                float c; NavigationNode u = HeapPop(heapN, heapC, out c);
+                float best;
+                if (!r.TryGetValue(u, out best) || c > best) continue;          // stale entry
+                if (!(u == fromNode || !(u is Planet)) || !u.WasDiscovered(civ) || u is Anomaly) continue;
+                List<NavigationNode> conns = u.connections;
+                for (int i = 0; i < conns.Count; i++)
+                {
+                    NavigationNode v = conns[i];
+                    float nc = c + (float)Fleet.CalcJumpETA(civ, u, v, travelSpeed);
+                    float old;
+                    if (r.TryGetValue(v, out old) && nc >= old) continue;
+                    r[v] = nc;
+                    HeapPush(heapN, heapC, v, nc);
+                }
+            }
+            result = r;
+            if (Verify) Log("ETA map: " + r.Count + " nodes in " + ((System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency).ToString("F0") + "ms");
+            if (Verify)
+            {
+                bypass = true;
+                Dictionary<NavigationNode, float> o = FleetHelper.GetETAToAll(civ, travelSpeed, fromNode, null);
+                int diff = o.Count == r.Count ? 0 : 1;
+                foreach (var kv in o) { float x; if (!r.TryGetValue(kv.Key, out x) || x != kv.Value) diff++; }
+                if (diff != 0) Mismatch("GetETAToAll", o.Count, r.Count);
+                result = o;
+            }
+            return true;
+        }
+        catch (Exception e) { LogEx("GetETAToAll", e); return false; }
+    }
+
+    static void HeapPush(List<NavigationNode> n, List<float> c, NavigationNode node, float cost)
+    {
+        n.Add(node); c.Add(cost);
+        int i = n.Count - 1;
+        while (i > 0)
+        {
+            int p = (i - 1) / 2;
+            if (c[p] <= c[i]) break;
+            NavigationNode tn = n[p]; n[p] = n[i]; n[i] = tn;
+            float tc = c[p]; c[p] = c[i]; c[i] = tc;
+            i = p;
+        }
+    }
+
+    static NavigationNode HeapPop(List<NavigationNode> n, List<float> c, out float cost)
+    {
+        NavigationNode top = n[0]; cost = c[0];
+        int last = n.Count - 1;
+        n[0] = n[last]; c[0] = c[last]; n.RemoveAt(last); c.RemoveAt(last);
+        int i = 0, cnt = n.Count;
+        while (true)
+        {
+            int l = 2 * i + 1, r = l + 1, m = i;
+            if (l < cnt && c[l] < c[m]) m = l;
+            if (r < cnt && c[r] < c[m]) m = r;
+            if (m == i) break;
+            NavigationNode tn = n[m]; n[m] = n[i]; n[i] = tn;
+            float tc = c[m]; c[m] = c[i]; c[i] = tc;
+            i = m;
+        }
+        return top;
+    }
+
+    // ---- Shader warm-up: compile all loaded shaders at the end of loading (~5 s more loading), so the first display of
+    // a 3D view (espionage, diplomacy, ...) does not stall for 1-2.5 s compiling them. moofix_warmup_off.txt disables it.
+    public static bool Pre_HerefordGame_OnLoadingComplete(HerefordGame self)
+    {
+        try
+        {
+            if (docDir == null || !File.Exists(Path.Combine(docDir, "moofix_warmup_off.txt")))
+            {
+                long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+                UnityEngine.Shader.WarmupAllShaders();
+                Log("WARMUP all shaders: " + ((System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency).ToString("F0") + "ms");
+            }
+        }
+        catch (Exception e) { LogEx("shader warmup", e); }
+        return false;
+    }
+
+    // ---- Diagnostics: C# -> Flash calls queued before a movie was ready run inside its first frame. Same loop as
+    // SWFMovie.PumpDelayedCalls, with a log line for calls of 50 ms or more.
+    static System.Reflection.FieldInfo fDelayedCalls;
+
+    public static bool Pre_SWFMovie_PumpDelayedCalls(SWFMovie self)
+    {
+        if (Bypassed()) return false;
+        try
+        {
+            if (!self.HasDelayedMethodCalls()) return false;
+            Scaleform.Value root = self.GetRoot();
+            if (root == null || !UIManager.Get().HasFocus) return false;
+            if (fDelayedCalls == null) fDelayedCalls = typeof(SWFMovie).GetField("delayedSWFCalls", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var list = fDelayedCalls == null ? null : fDelayedCalls.GetValue(self) as List<SWFMovie.SWFCall>;
+            if (list == null) return false;
+            while (list.Count > 0)
+            {
+                try
+                {
+                    long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+                    root.Invoke(list[0].methodName, list[0].parameters);
+                    double ms = (System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+                    if (ms >= 50) Log("SWFCALL " + self.GetType().Name + "." + list[0].methodName + ": " + ms.ToString("F0") + "ms");
+                    list.RemoveAt(0);
+                }
+                catch (Exception)
+                {
+                    Client.LogWarning("CallSWFMethod exception, retrying... method name: " + list[0].methodName);
+                    break;
+                }
+            }
+            return true;
+        }
+        catch (Exception e) { LogEx("PumpDelayedCalls", e); return false; }
+    }
+
+    // ---- Stage switch diagnostics: GameStage.SetCurrent activates the new 3D stage and deactivates the others
+    public static bool Pre_GameStage_SetCurrent(GameStage self, Stage newStage)
+    {
+        if (Bypassed()) return false;
+        long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        bypass = true; self.SetCurrent(newStage);
+        double ms = (System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        if (ms >= 20) Log("STAGE switch to " + (newStage == null ? "null" : newStage.GetType().Name) + ": " + ms.ToString("F0") + "ms");
+        return true;
+    }
+
+    // frame split for the stall monitor: time from the previous LateUpdate to this HerefordGame.Update (rendering of the
+    // previous frame and other scripts) vs. from here to LateUpdate
+    static long frameUpdateStart;
+    public static bool Pre_HerefordGame_Update(HerefordGame self)
+    {
+        frameUpdateStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        return false;
+    }
+
+    // ---- Screen opening diagnostics (log only): reading the SWF file, creating the native movie, and slow advances
+    // (the first advance of a movie runs its ActionScript initialization).
+    static readonly Dictionary<object, int> movieAdvances = new Dictionary<object, int>(RefEq.I);
+
+    public static bool Pre_AssetManager_LoadExternalFileToMemory(AssetManager self, string path, out byte[] result)
+    {
+        result = null;
+        if (Bypassed()) return false;
+        long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        bypass = true; result = self.LoadExternalFileToMemory(path);
+        double ms = (System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        if (ms >= 20) Log("MOVIE read " + path + ": " + (result == null ? 0 : result.Length / 1024) + " KB in " + ms.ToString("F0") + "ms");
+        return true;
+    }
+
+    public static bool Pre_Movie_MovieInit(Scaleform.Movie self, Scaleform.SFManager sfmgr, Scaleform.SFMovieCreationParams creationParams)
+    {
+        if (Bypassed()) return false;
+        long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        bypass = true; self.MovieInit(sfmgr, creationParams);
+        double ms = (System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        if (ms >= 20) Log("MOVIE create " + creationParams.MovieName + " (" + self.GetType().Name + "): " + ms.ToString("F0") + "ms");
+        return true;
+    }
+
+    public static bool Pre_Movie_Advance(Scaleform.Movie self, float deltaTime)
+    {
+        if (Bypassed()) return false;
+        long t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        bypass = true; self.Advance(deltaTime);
+        double ms = (System.Diagnostics.Stopwatch.GetTimestamp() - t0) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        int n;
+        movieAdvances.TryGetValue(self, out n);
+        movieAdvances[self] = ++n;
+        if (ms >= 50) Log("MOVIE advance " + self.GetType().Name + " #" + n + ": " + ms.ToString("F0") + "ms");
+        return true;
+    }
 
     public static bool Pre_Movie_DoHitTest(Scaleform.Movie self, float x, float y, Scaleform.HitTestType hitTestType, out bool result)
     {
@@ -2061,7 +2250,10 @@ public static class MooFix
                 int gcNow = -1; long heap = 0;
                 try { gcNow = GC.CollectionCount(0); heap = GC.GetTotalMemory(false); } catch { }
                 string gcs = gcNow >= 0 ? " | GC " + (gcNow - lastGcCount) + "x since last frame, heap " + (heap >> 20) + " MB" : "";
-                Log("FRAME stall " + gap.ToString("F0") + "ms (server " + (st < 0 ? "-" : ((ServerState)st).ToString()) + ")" + gcs + scan);
+                string split = "";
+                if (frameUpdateStart > lastLateUpdate && frameUpdateStart <= now)
+                    split = " | before update " + ((frameUpdateStart - lastLateUpdate) * tf).ToString("F0") + "ms, update " + ((now - frameUpdateStart) * tf).ToString("F0") + "ms";
+                Log("FRAME stall " + gap.ToString("F0") + "ms (server " + (st < 0 ? "-" : ((ServerState)st).ToString()) + ")" + split + gcs + scan);
                 if (scan.Length > 0) { scanSkipped = 0; scanEvaluated = 0; scanTotalTicks = 0; scanEvalTicks = 0; scanSystemsSkipped = 0; }
             }
         }

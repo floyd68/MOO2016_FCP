@@ -21,8 +21,10 @@ Unofficial — not affiliated with Wargaming, NGD Studios or the UCP author.
 | Empire Management frame, mouse over the list | 300–400 ms | ~6 ms on average |
 | Empire Management click handling (Quick Buy, row select) | ~0.5 s per click | 8–10 ms on average |
 | Empire Management list construction (C#) | 1.3–1.7 s | ~0.1 s |
+| Empire Management first opening | 4.7–6.9 s | <1 s (rows virtualized) |
+| First opening of espionage / races, Known Planets | ~2.2 s / 1.3–2.5 s, 1.35 s | no stall (shader warm-up), 5 ms |
 | Freeze after a battle / an event (turn results) | 17–33 s | ~0 |
-| Loading the save | 17.1–17.3 s | ~9.1–9.2 s |
+| Loading the save | 17.1–17.3 s | ~9.1–9.2 s (+~5 s shader warm-up, optional) |
 | Screen freeze per turn (simulation + new turn) | 10.1–10.3 s | ~4.7–5.3 s (both measured with the experimental overlap on) |
 | Tech tree opening, blueprint "confirm" | 5 s, several s | screen load only (~2 s) |
 | Empire Management after visiting a planet | list reset (sorted by name, top, first colony) | sort, selected colony and scroll position kept |
@@ -109,7 +111,7 @@ Close the game before `install`/`uninstall`.
 | `tools/check_tools.*` | checks .NET SDK 9+, Java 8+, FFDec (used by setup and build) |
 | `tools/scripts/` | SWF string extraction, finding method body indices from SWF XML (analysis only) |
 | `tools/ffdec/` | *(not in the repository)* put JPEXS FFDec here |
-| `swf/patches/` | changes to 8 EmpireManagement.swf method bodies as diffs against the original P-code |
+| `swf/patches/` | changes to 13 EmpireManagement.swf method bodies as diffs against the original P-code |
 | `setup.*`, `build.*`, `install.*`, `uninstall.*` | `.cmd` for the Windows Command Prompt, `.sh` for Git Bash |
 
 `.gitignore` excludes `build/`, `tools/ffdec/`, game binaries and `_local_only/` (the author's local working material).
@@ -120,7 +122,7 @@ Close the game before `install`/`uninstall`.
    The prefix calls a static method in `MooFix.dll`; `true` skips the original (result via an out parameter), `false` runs it.
    To call an original from MooFix, a thread-local `bypass` flag is set right before the call.
 2. **Scaleform wrapper (Assembly-CSharp-firstpass.dll)**: one prefix of the same kind on `Movie.DoHitTest`.
-3. **Flash UI (EmpireManagement.swf)**: instead of recompiling classes, **only method bodies** are replaced with P-code (7 bodies).
+3. **Flash UI (EmpireManagement.swf)**: instead of recompiling classes, **only method bodies** are replaced with P-code (12 bodies; the Empire Management list is virtualized).
    The original bodies are exported from your SWF and the diffs in `swf/patches` are applied to them.
 4. **MooFix log**: `Documents\Master of Orion\moofix_log.txt` — exceptions and one summary line per AI pass.
    Creating `moofix_verify.txt` in the same folder enables **verification mode** (1 in 16 results compared with the original; differences logged as `MISMATCH`).
@@ -168,8 +170,10 @@ See [LICENSE.md](LICENSE.md).
 | 제국 관리 프레임, 마우스가 목록 위 | 300~400ms | 평균 약 6ms |
 | 제국 관리 클릭 처리(Quick Buy, 행 선택) | 클릭당 약 0.5초 | 평균 8~10ms |
 | 제국 관리 목록 생성(C#) | 1.3~1.7초 | 약 0.1초 |
+| 제국 관리 첫 진입 | 4.7~6.9초 | 1초 미만(목록 가상화) |
+| 첩보 / 종족 첫 진입, 알려진 행성 | 약 2.2초 / 1.3~2.5초, 1.35초 | 멈춤 없음(셰이더 미리 컴파일), 5ms |
 | 전투·이벤트 후 멈춤(턴 결과 연출) | 17~33초 | 거의 0 |
-| 세이브 로딩 | 17.1~17.3초 | 약 9.1~9.2초 |
+| 세이브 로딩 | 17.1~17.3초 | 약 9.1~9.2초(+셰이더 미리 컴파일 약 5초, 끌 수 있음) |
 | 턴당 화면 멈춤(시뮬레이션 + 새 턴) | 10.1~10.3초 | 약 4.7~5.3초(둘 다 실험 기능인 겹치기를 켠 상태로 측정) |
 | 기술 트리 열기, 블루프린트 확인 | 5초, 수 초 | 화면 불러오기만(약 2초) |
 | 행성 화면에 다녀온 뒤 제국 관리 화면 | 목록 초기화(이름순, 맨 위, 첫 식민지) | 정렬·선택 식민지·스크롤 위치 유지 |
@@ -241,7 +245,7 @@ Git Bash: `./setup.sh`, `./build.sh` (`VERIFY=1`, `PERF=1`), `./install.sh`, `./
 | `tools/check_tools.*` | .NET SDK 9+, Java 8+, FFDec 확인(setup과 build가 사용) |
 | `tools/scripts/` | SWF 문자열 추출, SWF→XML에서 메서드 본문 인덱스 찾기(분석용) |
 | `tools/ffdec/` | *(저장소에 없음)* JPEXS FFDec를 여기에 풀어 둠 |
-| `swf/patches/` | EmpireManagement.swf 메서드 본문 8개의 변경 내용(원본 P-code 대비 diff) |
+| `swf/patches/` | EmpireManagement.swf 메서드 본문 13개의 변경 내용(원본 P-code 대비 diff) |
 | `setup.*`, `build.*`, `install.*`, `uninstall.*` | `.cmd`는 명령 프롬프트용, `.sh`는 Git Bash용 |
 
 `.gitignore`는 `build/`, `tools/ffdec/`, 게임 바이너리, `_local_only/`(작성자의 로컬 작업 자료)를 제외합니다.
@@ -251,7 +255,7 @@ Git Bash: `./setup.sh`, `./build.sh` (`VERIFY=1`, `PERF=1`), `./install.sh`, `./
 1. **C# (Assembly-CSharp.dll)**: 원본 메서드 앞에 Harmony 방식 *prefix*를 IL로 삽입. prefix가 `MooFix.dll`을 호출하고,
    `true`면 원본을 건너뛰고(결과는 out 인자), `false`면 원본 실행. MooFix에서 원본을 다시 부를 때는 스레드별 `bypass` 플래그 사용.
 2. **Scaleform 래퍼 (Assembly-CSharp-firstpass.dll)**: `Movie.DoHitTest`에 같은 방식의 prefix 1개.
-3. **Flash UI (EmpireManagement.swf)**: 클래스 재컴파일 대신 **메서드 본문만** P-code로 교체(7개).
+3. **Flash UI (EmpireManagement.swf)**: 클래스 재컴파일 대신 **메서드 본문만** P-code로 교체(12개, 제국 관리 목록 가상화 포함).
    원본 본문은 사용자의 SWF에서 내보내고 `swf/patches`의 diff를 적용합니다.
 4. **MooFix 로그**: `문서\Master of Orion\moofix_log.txt`. 같은 폴더에 `moofix_verify.txt`를 만들면 검증 모드
    (16번 중 1번 원본과 결과 비교, 불일치 시 `MISMATCH` 기록).

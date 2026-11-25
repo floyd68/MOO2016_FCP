@@ -89,6 +89,22 @@ settlement values and the allocation-free replacements; checksums matched in eve
 Empire Management first opening, measured inside Flash: building the 356 rows takes 1.55–1.6 s (row widgets 0.83–0.86 s,
 dropdown data 0.21 s) of a 4.6–5.5 s frame; the rest is loading the movie. Not changed (see [08](08_REMAINING_WORK.md)).
 
+
+## Fourth round (first opening of screens)
+
+Same save, regular build. First opening of each screen after loading (`FRAME stall`, `MOVIE`, `SWFCALL`, `STAGE` lines).
+
+| Screen | Before | After | Fix |
+|---|---|---|---|
+| Empire Management | 4.7–6.9 s (list fill 1.66 s + first frame of 356 row widgets ~3 s) | **< 1 s** (list fill 0.09 s, 15 widgets) | list virtualization |
+| Espionage | ~2.2 s (outside C#) | no stall | shader warm-up |
+| Races / diplomacy | 1.3–2.5 s (stage switch + rendering) | no stall | shader warm-up |
+| Known Planets | 1.35 s ETA computation + ~0.4 s | ETA 5 ms | Dijkstra |
+| Loading | ~9.1 s | ~14.3 s (+5.2 s warm-up) | `moofix_warmup_off.txt` restores the old loading time |
+| Tech tree, blueprints (3D stage switch) | 0.06–1.8 s, varies | unchanged | Unity object activation |
+
+SWF read and native movie creation: 1–6 ms per screen (main menu 0.65 s), i.e. not the cause.
+
 ---
 
 ## 한국어 (Korean)
@@ -174,3 +190,18 @@ dropdown data 0.21 s) of a 4.6–5.5 s frame; the rest is loading the movie. Not
 검증 모드 실행(같은 턴): 경로(509건), 별 쌍(3,844건), 행성 평가, 제국 보안, 정착지 값, 할당 없는 대체 구현 모두 불일치 0. 모든 실행에서 체크섬 일치.
 
 제국 관리 첫 진입을 Flash 안에서 측정: 4.6~5.5초 프레임 중 356행 생성이 1.55~1.6초(행 위젯 0.83~0.86초, 드롭다운 데이터 0.21초), 나머지는 무비 불러오기. 변경하지 않음([08](08_REMAINING_WORK.md) 참고).
+
+#### 4차 (화면 첫 전환)
+
+같은 세이브, 일반 빌드. 로딩 후 각 화면을 처음 열 때(`FRAME stall`, `MOVIE`, `SWFCALL`, `STAGE` 줄 기준).
+
+| 화면 | 이전 | 이후 | 수정 |
+|---|---|---|---|
+| 제국 관리 | 4.7~6.9초(목록 채우기 1.66초 + 행 위젯 356개 첫 프레임 약 3초) | **1초 미만**(목록 채우기 0.09초, 위젯 15개) | 목록 가상화 |
+| 첩보 | 약 2.2초(C# 밖) | 멈춤 없음 | 셰이더 미리 컴파일 |
+| 종족/외교 | 1.3~2.5초(스테이지 전환 + 렌더링) | 멈춤 없음 | 셰이더 미리 컴파일 |
+| 알려진 행성 | 도착 시간 계산 1.35초 + 약 0.4초 | 도착 시간 5ms | 다익스트라 |
+| 로딩 | 약 9.1초 | 약 14.3초(+5.2초 미리 컴파일) | `moofix_warmup_off.txt`로 이전 로딩 시간 |
+| 기술 트리, 블루프린트(3D 스테이지 전환) | 0.06~1.8초, 매번 다름 | 변화 없음 | Unity 오브젝트 활성화 |
+
+SWF 읽기와 네이티브 무비 생성은 화면당 1~6ms(메인 메뉴만 0.65초)로 원인이 아님.

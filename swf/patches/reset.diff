@@ -1,0 +1,46 @@
+--- reset.orig.pcode
++++ reset.norm.pcode
+@@ -6,3 +6,3 @@
+ maxstack 2
++localcount 2
+-localcount 1
+ initscopedepth 10
+@@ -14,4 +14,8 @@
+ getlocal0
++getproperty QName(PrivateNamespace(null,"12"),"mc")
++coerce QName(PackageNamespace(""),"Object")
++setlocal1
++getlocal0
+ getproperty QName(PrivateNamespace(null,"12"),"sp")
++pushbyte 0
+-pushint 0
+ setproperty QName(PackageNamespace(""),"verticalScrollPosition")
+@@ -20,13 +24,22 @@
+ pushnull
++equals
++not
++dup
++iftrue ofs002b
++pop
++getlocal1
++getproperty Multiname("mfSelOn",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++pushtrue
++strictequals
++ofs002b:
++iffalse ofs003e
++getlocal1
+-ifeq ofs0027
+-getlocal0
+-getproperty QName(PackageInternalNs("ngd"),"selectedColony")
+ pushfalse
++setproperty Multiname("mfSelOn",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
+-callpropvoid QName(PackageNamespace(""),"SetSelected"), 1
+ getlocal0
+ pushnull
++setproperty QName(PackageInternalNs("ngd"),"selectedColony")
+-initproperty QName(PackageInternalNs("ngd"),"selectedColony")
+ getlocal0
+ callpropvoid QName(PrivateNamespace(null,"12"),"positionItems"), 0
++ofs003e:
+-ofs0027:
+ returnvoid

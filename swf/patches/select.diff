@@ -1,0 +1,69 @@
+--- select.orig.pcode
++++ select.norm.pcode
+@@ -10,3 +10,3 @@
+ maxstack 2
++localcount 5
+-localcount 4
+ initscopedepth 10
+@@ -18,2 +18,6 @@
+ getlocal0
++getproperty QName(PrivateNamespace(null,"12"),"mc")
++coerce QName(PackageNamespace(""),"Object")
++setlocal3
++getlocal0
+ getproperty QName(PackageInternalNs("ngd"),"selectedColony")
+@@ -21,25 +25,23 @@
+ equals
++convert_b
++dup
++iffalse ofs0037
++pop
++getlocal3
++getproperty Multiname("mfSelOn",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++pushtrue
++strictequals
++convert_b
++ofs0037:
++convert_b
++setlocal 4
+-setlocal3
+ getlocal0
+-getproperty QName(PackageInternalNs("ngd"),"selectedColony")
+-pushnull
+-ifeq ofs001b
+-getlocal0
+-getproperty QName(PackageInternalNs("ngd"),"selectedColony")
+-pushfalse
+-callpropvoid QName(PackageNamespace(""),"SetSelected"), 1
+-ofs001b:
+-getlocal0
+ getlocal1
+-initproperty QName(PackageInternalNs("ngd"),"selectedColony")
+-getlocal0
+-getlocal0
+-getproperty QName(PackageInternalNs("ngd"),"selectedColony")
+ getproperty QName(PackageNamespace(""),"colonyIndex")
++setproperty QName(PrivateNamespace(null,"12"),"_selectedColonyID")
++getlocal3
+-initproperty QName(PrivateNamespace(null,"12"),"_selectedColonyID")
+-getlocal1
+ pushtrue
++setproperty Multiname("mfSelOn",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
+-callpropvoid QName(PackageNamespace(""),"SetSelected"), 1
+ getlocal0
++getlocal 4
+-getlocal3
+ callpropvoid QName(PrivateNamespace(null,"12"),"positionItems"), 1
+@@ -47,11 +49,3 @@
+ pushfalse
++setproperty QName(PackageNamespace(""),"scrolltoColony")
+-setproperty Multiname("scrolltoColony",[PrivateNamespace(null,"12"),PackageNamespace(""),PackageInternalNs("ngd"),PrivateNamespace(null,"79"),PackageNamespace("ngd"),Namespace("http://adobe.com/AS3/2006/builtin"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher")])
+-getlocal2
+-iffalse ofs004d
+-getlocal0
+-getlocal0
+-getproperty QName(PackageInternalNs("ngd"),"selectedColony")
+-getproperty QName(PackageNamespace(""),"y")
+-callpropvoid QName(PackageNamespace(""),"adjustScrollbar"), 1
+-ofs004d:
+ returnvoid

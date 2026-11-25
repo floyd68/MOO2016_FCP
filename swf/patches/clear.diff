@@ -1,0 +1,159 @@
+--- clear.orig.pcode
++++ clear.norm.pcode
+@@ -6,3 +6,3 @@
+ maxstack 3
++localcount 4
+-localcount 2
+ initscopedepth 10
+@@ -13,30 +13,132 @@
+ pushscope
++getlocal0
++getproperty QName(PrivateNamespace(null,"12"),"mc")
++coerce QName(PackageNamespace(""),"Object")
++setlocal1
+ pushbyte 0
++convert_i
++setlocal2
++pushnull
++coerce QName(PackageNamespace("ngd"),"ColonyInfoWidget")
++setlocal3
++getlocal1
++getproperty Multiname("mfPool",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++pushnull
++ifne ofs0038
++getlocal1
++findpropstrict QName(PackageNamespace(""),"Array")
++constructprop QName(PackageNamespace(""),"Array"), 0
++setproperty Multiname("mfPool",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++ofs0038:
++getlocal1
++findpropstrict QName(PackageNamespace(""),"Array")
++constructprop QName(PackageNamespace(""),"Array"), 0
++setproperty Multiname("mfFree",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++getlocal1
++getproperty Multiname("mfBound",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++pushnull
++equals
++not
++dup
++iffalse ofs0055
++pop
++getlocal1
++getproperty Multiname("mfRowW",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++pushnull
++equals
++not
++ofs0055:
++iffalse ofs00a8
++getlocal1
++getproperty Multiname("mfPendingTips",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++pushnull
++ifne ofs006b
++getlocal1
++findpropstrict QName(PackageNamespace(""),"Array")
++constructprop QName(PackageNamespace(""),"Array"), 0
++setproperty Multiname("mfPendingTips",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++ofs006b:
++pushbyte 0
++convert_i
++setlocal2
++jump ofs009c
++ofs0073:
++label
++getlocal1
++getproperty Multiname("mfRowW",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++getlocal1
++getproperty Multiname("mfBound",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++getlocal2
++getproperty MultinameL([PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++convert_i
++getproperty MultinameL([PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++getlex QName(PackageNamespace("ngd"),"ColonyInfoWidget")
++astypelate
++coerce QName(PackageNamespace("ngd"),"ColonyInfoWidget")
++setlocal3
++getlocal3
++pushnull
++ifeq ofs009a
++getlocal1
++getproperty Multiname("mfPendingTips",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++getlocal3
++pushfalse
++callpropvoid Multiname("push",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")]), 2
++ofs009a:
++inclocal_i 2
++ofs009c:
++getlocal2
++getlocal1
++getproperty Multiname("mfBound",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++getproperty Multiname("length",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++iflt ofs0073
++ofs00a8:
++pushbyte 0
++convert_i
++setlocal2
++jump ofs00df
++ofs00b0:
+-setlocal1
+-jump ofs0031
+-ofs0009:
+ label
+-findpropstrict QName(PackageNamespace("ngd"),"ColonyInfoWidget")
+-getlocal0
+-getproperty QName(PrivateNamespace(null,"12"),"widgetContainer")
+ getlocal1
++getproperty Multiname("mfPool",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++getlocal2
++getproperty MultinameL([PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++getlex QName(PackageNamespace("ngd"),"ColonyInfoWidget")
++astypelate
++coerce QName(PackageNamespace("ngd"),"ColonyInfoWidget")
++setlocal3
++getlocal3
+-callproperty QName(PackageNamespace(""),"getChildAt"), 1
+-callproperty QName(PackageNamespace("ngd"),"ColonyInfoWidget"), 1
+ pushfalse
+ setproperty QName(PackageNamespace(""),"visible")
++getlocal3
++pushfalse
++setproperty QName(PackageNamespace(""),"mouseEnabled")
++getlocal3
++pushfalse
++setproperty QName(PackageNamespace(""),"mouseChildren")
++getlocal3
+-findpropstrict QName(PackageNamespace("ngd"),"ColonyInfoWidget")
+-getlocal0
+-getproperty QName(PrivateNamespace(null,"12"),"widgetContainer")
+-getlocal1
+-callproperty QName(PackageNamespace(""),"getChildAt"), 1
+-callproperty QName(PackageNamespace("ngd"),"ColonyInfoWidget"), 1
+ pushbyte 0
+ setproperty QName(PackageNamespace(""),"y")
++getlocal1
++getproperty Multiname("mfFree",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++getlocal3
++callpropvoid Multiname("push",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")]), 1
++inclocal_i 2
++ofs00df:
++getlocal2
++getlocal1
++getproperty Multiname("mfPool",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++getproperty Multiname("length",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
++iflt ofs00b0
++getlocal1
++findpropstrict QName(PackageNamespace(""),"Array")
++constructprop QName(PackageNamespace(""),"Array"), 0
++setproperty Multiname("mfRowW",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
+-inclocal_i 1
+-ofs0031:
+ getlocal1
++findpropstrict QName(PackageNamespace(""),"Array")
++constructprop QName(PackageNamespace(""),"Array"), 0
++setproperty Multiname("mfBound",[PackageNamespace(""),Namespace("http://adobe.com/AS3/2006/builtin"),PackageNamespace("ngd"),PackageInternalNs("ngd"),StaticProtectedNs("flash.display:MovieClip"),StaticProtectedNs("flash.display:Sprite"),StaticProtectedNs("flash.display:DisplayObjectContainer"),StaticProtectedNs("flash.display:InteractiveObject"),StaticProtectedNs("flash.display:DisplayObject"),StaticProtectedNs("flash.events:EventDispatcher"),PrivateNamespace(null,"12"),ProtectedNamespace("ngd:ColonyWindow"),StaticProtectedNs("ngd:ColonyWindow")])
+ getlocal0
++pushnull
++setproperty QName(PackageInternalNs("ngd"),"selectedColony")
+-getproperty QName(PrivateNamespace(null,"12"),"widgetContainer")
+-getproperty QName(PackageNamespace(""),"numChildren")
+-iflt ofs0009
+ returnvoid

@@ -79,12 +79,17 @@ step "$B/ffdec_release.log" java -jar "$FFDEC_JAR" -replace "$ORIG_SWF" "$B/rele
   ngd.ColonyWindow      "$S/fill.pcode"       718 \
   ngd.ColonyWindow      "$S/adj.pcode"        1236 \
   ngd.ColonyWindow      "$S/buy.pcode"        1237 \
+  ngd.ColonyWindow      "$S/reset.pcode"      713 \
+  ngd.ColonyWindow      "$S/select.pcode"     719 \
+  ngd.ColonyWindow      "$S/update.pcode"     720 \
+  ngd.ColonyWindow      "$S/position.pcode"   721 \
+  ngd.ColonyWindow      "$S/clear.pcode"      722 \
   ngd.ASRoot            "$S/scroll.pcode"     979 \
   fl.controls.ScrollBar "$S/sb_press.pcode"   818 \
   fl.controls.ScrollBar "$S/sb_release.pcode" 820
 NREP=$(grep -c "Replace AS3 PCode" "$B/ffdec_release.log" || true)
-echo "  method bodies replaced: $NREP (expected 7)"
-if [ "$NREP" != 7 ] || [ ! -f "$B/release/EmpireManagement.swf" ]; then
+echo "  method bodies replaced: $NREP (expected 12)"
+if [ "$NREP" != 12 ] || [ ! -f "$B/release/EmpireManagement.swf" ]; then
   echo "ERROR: SWF patch incomplete:"; tail -n 30 "$B/ffdec_release.log"; exit 1
 fi
 

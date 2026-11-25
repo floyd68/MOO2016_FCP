@@ -1,6 +1,6 @@
 # 08. Remaining optimization candidates
 
-State after the third round (see [03](03_MEASUREMENTS.md)): loading ~9.1 s, screen freeze per turn ~4.7–5.3 s, AI stage ~6.5 s.
+State after the fourth round (see [03](03_MEASUREMENTS.md)): loading ~9.1 s (+~5 s optional shader warm-up), screen freeze per turn ~4.7–5.3 s, AI stage ~6.5 s, Empire Management first opening < 1 s.
 
 | Item | Current cost | Approach | Risk |
 |---|---|---|---|
@@ -11,8 +11,9 @@ State after the third round (see [03](03_MEASUREMENTS.md)): loading ~9.1 s, scre
 | AI stage, other | ~5 s per turn | profile again (`build.cmd perf`) | not analyzed |
 | Loading: client and server universes are initialized one after the other | ~2–3 s possible | the server universe is cloned from the finished client universe; would need a different load order and shares `ObjectBase.bSerializingGame` | high |
 | Loading: garbage collection | ~25 collections while loading | most remaining garbage is deserialization (reading the save) | — |
-| First opening of the Empire Management screen after starting the game | 4.6–5.5 s frame, of which 1.6 s builds the 356 rows | virtualize the Flash list (sorting, row expansion, scroll height and buy buttons are all tied to it) | high for ≤1 s |
-| Opening screens (Flash movie load) | ~2.2 s each first time | Scaleform movie loading; not analyzed | — |
+| Switching to a 3D screen (tech tree, blueprints, races) | 0.06–1.8 s, varies per switch | Unity activates/deactivates the stage object trees (`GameStage.SetCurrent`); keeping stages active would change rendering | high |
+| Two ~2 s frames right after loading | galaxy view construction (`BuildUniverse` 1.6 s) + rendering | not analyzed further | — |
+| Shader warm-up | +5.2 s loading | compile only the variants the 3D screens use (`ShaderVariantCollection`) instead of all shaders | low |
 | Auto-build `EvaluateColonyNeeds` | auto-build colonies × O(N) | no exact cache possible (results of earlier colonies must be reflected) | changes results |
 
 Not possible: upgrading the .NET runtime (Mono is embedded in the Unity 5.2 player) and tuning the Boehm GC (no settings exposed).
@@ -27,7 +28,7 @@ for exact numbers (profiling distorts very hot methods). Measure allocations wit
 
 ### 08. 남은 최적화 후보
 
-3차 작업 후 상태([03](03_MEASUREMENTS.md)): 로딩 약 9.1초, 턴당 화면 멈춤 약 4.7~5.3초, AI 단계 약 6.5초.
+4차 작업 후 상태([03](03_MEASUREMENTS.md)): 로딩 약 9.1초(+선택 기능인 셰이더 미리 컴파일 약 5초), 턴당 화면 멈춤 약 4.7~5.3초, AI 단계 약 6.5초, 제국 관리 첫 진입 1초 미만.
 
 | 항목 | 현재 비용 | 방법 | 위험 |
 |---|---|---|---|
@@ -38,8 +39,9 @@ for exact numbers (profiling distorts very hot methods). Measure allocations wit
 | AI 단계 나머지 | 턴당 약 5초 | 다시 측정(`build.cmd perf`) | 미분석 |
 | 로딩: 클라이언트·서버 universe 순차 초기화 | 2~3초 가능 | 서버 universe는 완성된 클라이언트를 복제해 만듦 → 로딩 순서 변경 필요, `ObjectBase.bSerializingGame` 공유 | 높음 |
 | 로딩: GC | 로딩 중 약 25회 | 남은 쓰레기는 대부분 세이브 읽기(역직렬화) | — |
-| 게임 시작 후 첫 제국 관리 진입 | 4.6~5.5초 프레임, 그중 356행 생성 1.6초 | Flash 목록 가상화(정렬, 행 펼침, 스크롤 높이, 구매 버튼이 모두 얽힘) | 1초 이하 이득에 비해 높음 |
-| 화면 처음 열기(Flash 무비 불러오기) | 화면마다 약 2.2초 | Scaleform 무비 로딩, 미분석 | — |
+| 3D 화면 전환(기술 트리, 블루프린트, 종족) | 0.06~1.8초, 매번 다름 | Unity가 스테이지 오브젝트 트리를 켜고 끔(`GameStage.SetCurrent`). 스테이지를 계속 켜 두면 렌더링이 달라짐 | 높음 |
+| 로딩 직후 약 2초 프레임 2개 | 은하 화면 구성(`BuildUniverse` 1.6초) + 렌더링 | 미분석 | — |
+| 셰이더 미리 컴파일 | 로딩 +5.2초 | 전체 대신 3D 화면이 쓰는 변형만 컴파일(`ShaderVariantCollection`) | 낮음 |
 | 자동 건설 `EvaluateColonyNeeds` | 자동 건설 식민지 수 × O(N) | 정확한 캐시 불가 | 결과 변경 |
 
 불가능: .NET 런타임 업그레이드(Mono가 Unity 5.2 플레이어에 내장), Boehm GC 조정(설정이 노출되지 않음).

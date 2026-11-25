@@ -17,7 +17,8 @@ Comparing P-code showed a newly generated private namespace (`PrivateNamespace(n
    java -jar ffdec.jar -swf2xml EmpireManagement.swf em.xml
    python -I tools/scripts/abcidx3.py em.xml ColonyWindow
    ```
-   For the UCP 6.4b `EmpireManagement.swf`: ColonyWindow constructor 712, FillList 718, adjustScrollbar 1236, setBuyBtns 1237,
+   For the UCP 6.4b `EmpireManagement.swf`: ColonyWindow constructor 712, ResetFilters 713, FillList 718, SelectColony 719,
+   updateSpecificColony 720, positionItems 721, ClearWidgets 722, adjustScrollbar 1236, setBuyBtns 1237,
    ASRoot.OnEnterFrame 973, ASRoot.CheckScrollableObjects 979, ScrollBar.thumbPressHandler 818, thumbReleaseHandler 820.
 
 2. **Export the original P-code**
@@ -71,6 +72,11 @@ original exactly at the stated position, otherwise the build stops ("Different S
 | `fill` | `ngd.ColonyWindow` | `FillList` | 718 | ✓ | ✓ |
 | `adj` | `ngd.ColonyWindow` | `adjustScrollbar` (empty in UCP; new logic) | 1236 | ✓ | ✓ |
 | `buy` | `ngd.ColonyWindow` | `setBuyBtns` | 1237 | ✓ | ✓ |
+| `reset` | `ngd.ColonyWindow` | `ResetFilters` | 713 | ✓ | ✓ |
+| `select` | `ngd.ColonyWindow` | `SelectColony` | 719 | ✓ | ✓ |
+| `update` | `ngd.ColonyWindow` | `updateSpecificColony` | 720 | ✓ | ✓ |
+| `position` | `ngd.ColonyWindow` | `positionItems` | 721 | ✓ | ✓ |
+| `clear` | `ngd.ColonyWindow` | `ClearWidgets` | 722 | ✓ | ✓ |
 | `scroll` | `ngd.ASRoot` | `CheckScrollableObjects` | 979 | ✓ | ✓ |
 | `sb_press` | `fl.controls.ScrollBar` | `thumbPressHandler` | 818 | ✓ | ✓ |
 | `sb_release` | `fl.controls.ScrollBar` | `thumbReleaseHandler` | 820 | ✓ | ✓ |
@@ -112,7 +118,7 @@ FFDec AS3 컴파일러로 `ngd.ColonyWindow` 클래스 전체를 교체했더니
 
 #### 절차
 1. **메서드 본문 인덱스 찾기**: `-swf2xml` 후 `python -I tools/scripts/abcidx3.py em.xml ColonyWindow`.
-   UCP 6.4b 기준: 생성자 712, FillList 718, adjustScrollbar 1236, setBuyBtns 1237, OnEnterFrame 973, CheckScrollableObjects 979, thumbPressHandler 818, thumbReleaseHandler 820.
+   UCP 6.4b 기준: 생성자 712, ResetFilters 713, FillList 718, SelectColony 719, updateSpecificColony 720, positionItems 721, ClearWidgets 722, adjustScrollbar 1236, setBuyBtns 1237, OnEnterFrame 973, CheckScrollableObjects 979, thumbPressHandler 818, thumbReleaseHandler 820.
 2. **원본 P-code 내보내기**: `-format script:pcode -selectclass … -export script`. 교체 단위는 `method … end ; method` 블록.
 3. **새 본문 만들기**: 짧은 수정은 P-code 직접 편집, 긴 로직은 임시 사본에서 AS3로 작성 → 재컴파일 → 해당 메서드 P-code만 추출 → 네임스페이스를 원본 표기로 정규화(위 sed). 작업용 소스는 `_local_only/swf_work_as/ColonyWindow.patched.as`.
    `try/catch` 금지(activation 객체 생성), 새 필드 불가 → 동적 객체(`mc`)에 상태 저장.
@@ -122,7 +128,7 @@ FFDec AS3 컴파일러로 `ngd.ColonyWindow` 클래스 전체를 교체했더니
 #### diff로 배포
 저장소에는 완전한 메서드 본문(원본 바이트코드 포함)이 없고, 원본 본문과 패치된 본문의 차이인 `swf/patches/<이름>.diff`(앞뒤 공백 제거, 문맥 1줄)만 있습니다.
 빌드할 때 원본 SWF에서 세 클래스의 P-code를 내보내고 → `BuildHelper apply`가 각 메서드 블록을 찾아 diff 적용(문맥·삭제 줄이 정확히 일치해야 하며, 다르면 빌드 중단) → FFDec `-replace`로 삽입합니다.
-대상: `ctor`(생성자, 712), `fill`(`FillList`, 718), `adj`(`adjustScrollbar`, 1236), `buy`(`setBuyBtns`, 1237), `scroll`(`CheckScrollableObjects`, 979), `sb_press`(818), `sb_release`(820), `enterframe`(`OnEnterFrame`, 973, 측정 빌드 전용).
+대상: `ctor`(생성자, 712), `fill`(`FillList`, 718), `adj`(`adjustScrollbar`, 1236), `buy`(`setBuyBtns`, 1237), `reset`(`ResetFilters`, 713), `select`(`SelectColony`, 719), `update`(`updateSpecificColony`, 720), `position`(`positionItems`, 721), `clear`(`ClearWidgets`, 722), `scroll`(`CheckScrollableObjects`, 979), `sb_press`(818), `sb_release`(820), `enterframe`(`OnEnterFrame`, 973, 측정 빌드 전용).
 이 방식으로 만든 본문은 이전의 전체 본문과 같고, 결과 SWF도 바이트 단위로 같음을 확인했습니다.
 
 diff 관리: `BuildHelper extract <export> <폴더>`로 원본 본문을 꺼내고, 사본을 수정한 뒤 `BuildHelper mkdiff <원본> <수정본> swf/patches/<이름>.diff`.
